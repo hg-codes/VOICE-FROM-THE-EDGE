@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kinnera Performance Lab — Voices from the Edge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,500&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:         #110B09;
+      --bg-mid:     #1C1310;
+      --bg-card:    #2A1D17;
+      --bg-card2:   #38261F;
+      --border:     #3A241A;
+      --border-lt:  #4A3022;
+      --amber:      #E08E36;
+      --amber-lt:   #F4B961;
+      --amber-dk:   #8C4A15;
+      --brick:      #C84B31;
+      --brick-lt:   #E26D53;
+      --sage:       #7A9075;
+      --text:       #F0E4D8;
+      --text-mid:   #B8A492;
+      --text-mute:  #8A7360;
+      --white:      #FFFFFF;
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; }
+
+    /* ── Scrollbar ───────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-mid); }
+    ::-webkit-scrollbar-thumb { background: var(--amber-dk); border-radius: 3px; }
+
+    /* ── Header ──────────────────────────────────────────────── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.7rem 1.5rem;
+      background: var(--bg-mid);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-brand { display: flex; align-items: center; gap: 0.75rem; }
+    .brand-icon { font-size: 1.6rem; color: var(--brick-lt); }
+    .brand-text h1 { font-family: 'Playfair Display', serif; font-size: 1.05rem; color: var(--white); letter-spacing: 0.01em; }
+    .brand-text p  { font-size: 0.7rem; color: var(--text-mute); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 1px; }
+    .header-tag span {
+      padding: 0.38rem 1.1rem; border-radius: 4px;
+      background: var(--bg-card); border: 1px solid var(--brick-lt);
+      color: var(--brick-lt); font-size: 0.82rem; font-weight: 600;
+      letter-spacing: 0.04em; font-family: 'Inter', sans-serif;
+    }
+
+    /* ── Main Layout ──────────────────────────────────────────── */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      grid-template-rows: 1fr auto;
+      height: calc(100vh - 56px);
+      gap: 0;
+    }
+
+    /* ── Video Column ─────────────────────────────────────────── */
+    .video-column {
+      display: flex; flex-direction: column;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .video-wrapper {
+      position: relative; flex: 1;
+      background: #000;
+    }
+    #yt-player { width: 100%; height: 100%; }
+    .video-wrapper iframe { width: 100%; height: 100%; display: block; }
+
+    /* ── 12-Stair Fretboard Visualizer ────────────────────────── */
+    .fretboard-strip {
+      padding: 0.8rem 1.2rem;
+      background: var(--bg-mid);
+      border-top: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .fretboard-header {
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .fretboard-label {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-mute);
+    }
+    .fretboard-label span { color: var(--brick-lt); font-weight: 600; }
+    .fret-container {
+      display: flex; justify-content: space-between;
+      position: relative; padding: 10px 0;
+      border-bottom: 2px solid var(--amber-dk); /* The String */
+    }
+    .fret {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      position: relative;
+    }
+    .fret-marker {
+      width: 4px; height: 16px; background: var(--border-lt);
+      border-radius: 2px; transition: all 0.3s;
+    }
+    .fret.active .fret-marker {
+      background: var(--amber-lt);
+      box-shadow: 0 0 10px var(--amber);
+      transform: scaleY(1.5);
+    }
+    .swara-label {
+      font-size: 0.65rem; color: var(--text-mute); font-family: 'JetBrains Mono', monospace;
+      position: absolute; bottom: -20px; transition: color 0.3s;
+    }
+    .fret.active .swara-label { color: var(--amber-lt); font-weight: bold; }
+    
+    /* Graha Badge */
+    .graha-badge {
+      font-size: 0.72rem; padding: 0.22rem 0.65rem;
+      border-radius: 3px; font-weight: 600; letter-spacing: 0.04em;
+      background: var(--bg-card2); border: 1px solid var(--border-lt);
+      color: var(--text-mid); transition: all 0.3s;
+    }
+    .graha-badge.sama { background: rgba(226, 109, 83, 0.2); border-color: var(--brick-lt); color: var(--brick-lt); }
+    .graha-badge.anagata { background: rgba(122, 144, 117, 0.2); border-color: var(--sage); color: var(--sage); }
+
+    /* ── Right Panel ──────────────────────────────────────────── */
+    .right-panel {
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      background: var(--bg-mid);
+    }
+
+    /* Active concept card */
+    .concept-card {
+      padding: 1.2rem 1.2rem 1rem;
+      border-bottom: 1px solid var(--border);
+      position: relative; overflow: hidden;
+      transition: background 0.4s;
+      min-height: 220px;
+    }
+    .concept-card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+      background: var(--amber-lt); transition: background 0.4s;
+    }
+    .concept-card.swara::before { background: var(--amber-lt); }
+    .concept-card.sama::before { background: var(--brick-lt); }
+    .concept-card.anagata::before { background: var(--sage); }
+    
+    .concept-card.alert-flash { animation: card-flash 0.6s ease; }
+    @keyframes card-flash {
+      0% { background: rgba(226, 109, 83, 0.0); }
+      30% { background: rgba(226, 109, 83, 0.18); }
+      100% { background: transparent; }
+    }
+
+    .concept-type-tag {
+      display: inline-block; padding: 0.18rem 0.65rem; border-radius: 3px;
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      margin-bottom: 0.55rem; transition: background 0.3s, color 0.3s;
+    }
+    .tag-swara { background: rgba(244, 185, 97, 0.15); color: var(--amber-lt); border: 1px solid var(--amber-dk); }
+    .tag-sama { background: rgba(200, 75, 49, 0.15); color: var(--brick-lt); border: 1px solid var(--brick); }
+    .tag-anagata { background: rgba(122, 144, 117, 0.15); color: var(--sage); border: 1px solid var(--sage); }
+
+    .concept-title {
+      font-family: 'Playfair Display', serif; font-size: 1.22rem;
+      color: var(--white); line-height: 1.3; margin-bottom: 0.5rem;
+    }
+    .concept-desc {
+      font-size: 0.82rem; color: var(--text-mid); line-height: 1.65;
+      margin-bottom: 0.7rem;
+    }
+
+    /* ── Timeline Scroller ────────────────────────────────────── */
+    .timeline-header {
+      padding: 0.65rem 1.2rem;
+      font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-mute); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .tl-count { color: var(--brick-lt); font-weight: 600; }
+    .timeline-list {
+      flex: 1; overflow-y: auto; padding: 0.5rem 0;
+    }
+    .tl-item {
+      display: flex; align-items: flex-start; gap: 0.75rem;
+      padding: 0.6rem 1.2rem;
+      cursor: pointer; border-left: 3px solid transparent;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .tl-item:hover { background: var(--bg-card); }
+    .tl-item.active {
+      background: var(--bg-card2);
+      border-left-color: var(--brick-lt);
+    }
+    .tl-item.active .tl-title { color: var(--white); }
+    .tl-time {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+      color: var(--text-mute); white-space: nowrap; padding-top: 1px; min-width: 40px;
+    }
+    .tl-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--border-lt); flex-shrink: 0; margin-top: 5px;
+      transition: background 0.2s;
+    }
+    .tl-item.active .tl-dot { background: var(--brick-lt); box-shadow: 0 0 6px var(--brick); }
+    .tl-content { flex: 1; min-width: 0; }
+    .tl-title { font-size: 0.82rem; font-weight: 600; color: var(--text-mid); transition: color 0.2s; line-height: 1.3; }
+    .tl-sub   { font-size: 0.72rem; color: var(--text-mute); margin-top: 2px; }
+    .tl-type-badge {
+      font-size: 0.62rem; padding: 0.1rem 0.38rem; border-radius: 2px; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase; flex-shrink: 0; margin-top: 3px;
+    }
+
+    /* ── Skeleton / Loading ───────────────────────────────────── */
+    .player-placeholder {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: #0A0604; gap: 1rem;
+    }
+    .ph-icon { font-size: 3rem; color: var(--brick); }
+    .ph-text { font-size: 0.85rem; color: var(--text-mute); text-align: center; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <div class="brand-icon">🪕</div>
+    <div class="brand-text">
+      <h1>Performance Lab</h1>
+      <p>Kinnera Katha · Live Annotation</p>
+    </div>
+  </div>
+  <div class="header-tag">
+    <span>Kinnera Katha — D. Mogilaiah</span>
+  </div>
+</header>
+
+<div class="main">
+
+  <div class="video-column">
+    <div class="video-wrapper">
+      <div id="yt-player">
+        <div class="player-placeholder">
+          <div class="ph-icon">▶</div>
+          <div class="ph-text">Loading YouTube player…<br>Waiting for Video ID.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fretboard-strip">
+      <div class="fretboard-header">
+        <div class="fretboard-label">Kinnera: <span id="fret-mode">12 Swara Sthanas</span></div>
+        <div class="graha-badge" id="graha-badge">Tala Active</div>
+      </div>
+      <div class="fret-container" id="fret-container">
+        </div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="concept-card" id="concept-card">
+      <div class="concept-type-tag tag-swara" id="concept-type-tag">Setup</div>
+      <div class="concept-title" id="concept-title">Waiting for playback…</div>
+      <div class="concept-desc" id="concept-desc">Press play to observe how Darshanam Mogilaiah navigates the 12 frets and uses rhythmic Graha to code the emotion of the ballad.</div>
+    </div>
+
+    <div class="timeline-header">
+      <span>Storytelling Timeline</span>
+      <span class="tl-count" id="tl-count">— events</span>
+    </div>
+    <div class="timeline-list" id="timeline-list"></div>
+  </div>
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+// NOTE: I am using a placeholder Video ID. You MUST replace 'YOUR_YOUTUBE_ID' 
+// with a real video of Darshanam Mogilaiah performing.
+// ── Data ──────────────────────────────────────────────────────────────────────
+const kinneraData = {
+  title: "Kinnera Katha: Darshanam Mogilaiah (12-Stair Kinnera)",
+  videoId: "X7UK2wR-7wE", // Actual video of Kinnera demonstration
+  events: [
+    {
+      start: 0, end: 55,
+      type: "swara", title: "The 12-Stair Innovation",
+      description: "Observe the physical instrument and its tuning. Historically limited to 7-9 frets, Mogilaiah expanded the Kinnera to 12 frets. This allows him to access all 12 semitones of the octave, acting as a bridge between folk limitation and Sampoorna (7-note) classical capacity.",
+      activeFrets: [0, 2, 4, 5, 7, 9, 11], // Highlighting a standard scale
+      grahaText: "Exploring the Scale"
+    },
+    {
+      start: 55, end: 120,
+      type: "anagata", title: "Anagatagraha (Anticipation)",
+      description: "Listen to the interplay between the rhythm and the vocal line. Notice how the rhythmic pulse of the Kinnera (the Tala riverbed) drops first, and the vocals enter exactly AFTER the beat. This 'Anagata Graha' creates dramatic tension, signaling that the hero of the ballad is building up to action.",
+      activeFrets: [0, 3, 7, 10], // Highlighting tension notes
+      grahaText: "Anagatagraha (After Beat)"
+    },
+    {
+      start: 120, end: 180,
+      type: "sama", title: "Sama Graha (Victory)",
+      description: "As the performance builds, notice when the emotional code shifts. The vocal line lands with forceful precision directly ON the beat. This 'Sama Graha' is used to project strength, resolve, or a moment of triumph for the hero in the narrative.",
+      activeFrets: [0, 4, 7], // Strong stable notes (Sa, Ga, Pa)
+      grahaText: "Sama Graha (On Beat)"
+    }
+  ]
+};
+
+const swaras = ["S", "r1", "R2", "g2", "G3", "m1", "M2", "P", "d1", "D2", "n2", "N3"];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let player = null;
+let currentEventIdx = -1;
+let pollInterval = null;
+
+// ── Initialization ────────────────────────────────────────────────────────────
+function initFretboard() {
+  const container = document.getElementById('fret-container');
+  swaras.forEach((swara, index) => {
+    const fret = document.createElement('div');
+    fret.className = 'fret';
+    fret.id = 'fret-' + index;
+    fret.innerHTML = `
+      <div class="fret-marker"></div>
+      <div class="swara-label">${swara}</div>
+    `;
+    container.appendChild(fret);
+  });
+}
+
+const tag = document.createElement('script');
+tag.src = 'https://www.youtube.com/iframe_api';
+document.head.appendChild(tag);
+
+window.onYouTubeIframeAPIReady = function () {
+  initFretboard();
+  player = new YT.Player('yt-player', {
+    videoId: kinneraData.videoId,
+    playerVars: { rel: 0, modestbranding: 1, showinfo: 0 },
+    events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange }
+  });
+};
+
+function onPlayerReady() {
+  buildTimeline();
+  renderEvent(kinneraData.events[0], 0);
+}
+
+function onPlayerStateChange(e) {
+  if (e.data === YT.PlayerState.PLAYING) {
+    pollInterval = setInterval(tick, 350);
+  } else {
+    clearInterval(pollInterval);
+  }
+}
+
+// ── Polling & Rendering ───────────────────────────────────────────────────────
+function tick() {
+  if (!player || typeof player.getCurrentTime !== 'function') return;
+  const t = player.getCurrentTime();
+  const events = kinneraData.events;
+  let found = events.length - 1;
+  for (let i = 0; i < events.length; i++) {
+    if (t >= events[i].start && t < events[i].end) { found = i; break; }
+  }
+  if (found !== currentEventIdx) {
+    currentEventIdx = found;
+    renderEvent(events[found], found);
+    highlightTimeline(found);
+  }
+}
+
+function renderEvent(ev, idx) {
+  const card = document.getElementById('concept-card');
+  card.className = 'concept-card ' + ev.type + ' alert-flash';
+  setTimeout(() => card.classList.remove('alert-flash'), 600);
+
+  const tag = document.getElementById('concept-type-tag');
+  tag.className = 'concept-type-tag tag-' + ev.type;
+  tag.textContent = ev.type.toUpperCase();
+
+  document.getElementById('concept-title').textContent = ev.title;
+  document.getElementById('concept-desc').textContent = ev.description;
+
+  // Update Graha Badge
+  const badge = document.getElementById('graha-badge');
+  badge.textContent = ev.grahaText;
+  badge.className = 'graha-badge ' + (ev.type === 'swara' ? '' : ev.type);
+
+  // Update Fretboard Visualizer
+  document.querySelectorAll('.fret').forEach(f => f.classList.remove('active'));
+  ev.activeFrets.forEach(fretIndex => {
+    const fretEl = document.getElementById('fret-' + fretIndex);
+    if (fretEl) fretEl.classList.add('active');
+  });
+}
+
+// ── Timeline Build ────────────────────────────────────────────────────────────
+function buildTimeline() {
+  const list = document.getElementById('timeline-list');
+  list.innerHTML = '';
+  document.getElementById('tl-count').textContent = kinneraData.events.length + ' segments';
+
+  kinneraData.events.forEach((ev, i) => {
+    const item = document.createElement('div');
+    item.className = 'tl-item';
+    item.id = 'tl-' + i;
+    item.onclick = () => {
+      if (player && player.seekTo) {
+        player.seekTo(ev.start, true);
+        player.playVideo();
+      }
+    };
+
+    const col = { swara: '#F4B961', sama: '#E26D53', anagata: '#7A9075' }[ev.type];
+
+    item.innerHTML = `
+      <div class="tl-time">${Math.floor(ev.start / 60)}:${String(ev.start % 60).padStart(2, '0')}</div>
+      <div class="tl-dot"></div>
+      <div class="tl-content">
+        <div class="tl-title">${ev.title}</div>
+        <div class="tl-sub">${ev.grahaText}</div>
+      </div>
+      <div class="tl-type-badge" style="background:${col}22;color:${col};border:1px solid ${col}66">
+        ${ev.type.toUpperCase()}
+      </div>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function highlightTimeline(idx) {
+  document.querySelectorAll('.tl-item').forEach((el, i) => el.classList.toggle('active', i === idx));
+}
+
+// Init Fallback for local testing
+window.addEventListener('load', () => {
+  if (document.getElementById('fret-container').children.length === 0) {
+    initFretboard();
+  }
+});
+</script>
+</body>
+</html>

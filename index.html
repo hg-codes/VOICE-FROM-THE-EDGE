@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Voices from the Edge | Folk Heritage Interactive Suites</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ===== RESET & TOKENS ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg-void:     #05030A;
+      --bg-card:     rgba(15, 10, 25, 0.6);
+      --gold-bright: #FFD166;
+      --gold-warm:   #E8A100;
+      --text-light:  #F5ECD7;
+      --text-muted:  #9B8A70;
+      --border-g:    rgba(232, 161, 0, 0.2);
+      
+      /* Tradition specific accents */
+      --t-baul:      #FF9500;
+      --t-kinnera:   #B07000;
+      --t-villu:     #E74C3C;
+      --t-decline:   #C0392B;
+      --t-class:     #9b59b6; /* Amethyst purple for theory/concepts */
+    }
+
+    body {
+      background: var(--bg-void);
+      color: var(--text-light);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ===== AESTHETIC BACKGROUND ===== */
+    #stars-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .ambient-glow {
+      position: fixed;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(232,161,0,0.05) 0%, transparent 60%);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 0;
+      animation: pulse-glow 8s infinite alternate;
+    }
+    @keyframes pulse-glow {
+      0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+      100% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+    }
+
+    /* ===== MAIN LAYOUT ===== */
+    .container {
+      position: relative;
+      z-index: 10;
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 60px 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ===== HERO SECTION ===== */
+    .hero {
+      text-align: center;
+      margin-bottom: 70px;
+      animation: fade-down 1.2s ease-out;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, rgba(232,161,0,0.2), rgba(255,148,0,0.05));
+      border: 1px solid var(--border-g);
+      border-radius: 100px;
+      padding: 6px 24px;
+      font-family: 'Cinzel', serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.3em;
+      color: var(--gold-warm);
+      margin-bottom: 24px;
+      text-transform: uppercase;
+    }
+    .hero h1 {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 800;
+      line-height: 1.1;
+      background: linear-gradient(135deg, #FFF 0%, var(--gold-bright) 50%, #A06030 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 16px;
+    }
+    .hero p {
+      font-family: 'Crimson Text', serif;
+      font-size: 1.3rem;
+      font-style: italic;
+      color: var(--text-muted);
+      max-width: 700px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    @keyframes fade-down {
+      from { opacity: 0; transform: translateY(-30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== EXHIBITION GRID ===== */
+    .exhibition-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 32px;
+      width: 100%;
+    }
+
+    /* ===== TRADITION CATEGORY / CARDS ===== */
+    .tradition-section {
+      background: var(--bg-card);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 20px;
+      padding: 30px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      transition: border-color 0.4s;
+    }
+    
+    .tradition-section.baul:hover { border-color: rgba(255,149,0,0.4); }
+    .tradition-section.kinnera:hover { border-color: rgba(176,112,0,0.4); }
+    .tradition-section.villu:hover { border-color: rgba(231,76,60,0.4); }
+    .tradition-section.decline:hover { border-color: rgba(192,57,43,0.4); }
+    .tradition-section.class-concepts:hover { border-color: rgba(155,89,182,0.4); }
+
+    .t-header {
+      margin-bottom: 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      padding-bottom: 16px;
+    }
+    .t-header h2 {
+      font-family: 'Cinzel', serif;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-light);
+      margin-bottom: 4px;
+    }
+    .t-header p {
+      font-family: 'Crimson Text', serif;
+      font-size: 1rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* Individual links inside traditions */
+    .module-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid transparent;
+      border-radius: 12px;
+      text-decoration: none;
+      margin-bottom: 12px;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .module-link:last-child { margin-bottom: 0; }
+    
+    .module-link::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0; width: 4px;
+      background: var(--c);
+      opacity: 0.5;
+      transition: opacity 0.3s;
+    }
+
+    .module-info h3 {
+      font-family: 'Inter', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 500;
+      color: var(--text-light);
+      margin-bottom: 4px;
+      transition: color 0.3s;
+    }
+    .module-info p {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.4);
+    }
+    
+    .arrow-icon {
+      color: rgba(255,255,255,0.2);
+      font-size: 1.2rem;
+      transition: all 0.3s;
+      transform: translateX(-5px);
+    }
+
+    .module-link:hover {
+      background: rgba(255,255,255,0.03);
+      border-color: rgba(255,255,255,0.1);
+      transform: translateY(-2px);
+    }
+    .module-link:hover::before { opacity: 1; }
+    .module-link:hover .module-info h3 { color: var(--c); }
+    .module-link:hover .arrow-icon {
+      color: var(--c);
+      transform: translateX(0);
+    }
+
+    /* Color definitions for modules */
+    .c-baul { --c: var(--t-baul); }
+    .c-kinnera { --c: var(--t-kinnera); }
+    .c-villu { --c: var(--t-villu); }
+    .c-decline { --c: var(--t-decline); }
+    .c-class { --c: var(--t-class); }
+    
+    /* Decoration inside cards */
+    .t-icon {
+      font-size: 2rem;
+      float: right;
+      opacity: 0.2;
+      margin-top: -10px;
+    }
+
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 2.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background Ambience -->
+  <canvas id="stars-canvas"></canvas>
+  <div class="ambient-glow"></div>
+
+  <div class="container">
+    
+    <!-- Hero Header -->
+    <div class="hero">
+      <div class="hero-badge">Interactive Digital Exhibition</div>
+      <h1>VOICES FROM THE EDGE</h1>
+      <p>Journey into the heart of India's endangered folk traditions. Explore the instruments, hear the stories, and understand the fight for preservation across three ancient lineages.</p>
+    </div>
+
+    <!-- Main Exhibition Grid -->
+    <div class="exhibition-grid">
+      
+      <!-- BAUL (Bengal) -->
+      <section class="tradition-section baul">
+        <div class="t-header">
+          <span class="t-icon" style="color:var(--t-baul)">✧</span>
+          <h2>The Baul Path</h2>
+          <p>West Bengal & Bangladesh</p>
+        </div>
+        <a href="ektara_explorer.html" class="module-link c-baul">
+          <div class="module-info">
+            <h3>Baul Ektara Sound Explorer</h3>
+            <p>Interactive 5-pad sonic visualizer</p>
+          </div>
+          <span class="arrow-icon">→</span>
+        </a>
+        <a href="ektara_detailed_labeling.html" class="module-link c-baul">
+          <div class="module-info">
+            <h3>Ektara Anatomy Explorer</h3>
+            <p>Interactive SVG instrument breakdown</p>
+          </div>
+          <span class="arrow-icon">→</span>
+        </a>
+      </section>
+
+      <!-- KINNERA (Telangana) -->
+      <section class="tradition-section kinnera">
+        <div class="t-header">
+          <span class="t-icon" style="color:var(--t-kinnera)">⟡</span>
+          <h2>The Kinnera Katha</h2>
+          <p>Telangana</p>
+        </div>
+        <a href="kinnera_3d_explorer.html" class="module-link c-kinnera">
+          <div class="module-info">
+            <h3>3D Kinnera Instrument</h3>
+            <p>Interactive model viewing & acoustics</p>
+          </div>
+          <span class="arrow-icon">→</span>
+        </a>
+        <a href="kinnera_spatial_story.html" class="module-link c-kinnera">
+          <div class="module-info">
+            <h3>Spatial Storyteller Simulator</h3>
+            <p>Immersive 3D performance simulation</p>
+          </div>
+          <span class="arrow-icon">→</span>
+        </a>
+        <a href="kinnera_vs_world.html" class="module-link c-kinnera">
+          <div class="module-info">
+            <h3>World Zither Comparison</h3>
+            <p>Cross-cultural string analysis</p>
+          </div>
+          <span class="arrow-icon">→</span>
+        </a>
+      </section>
+
+      <!-- VILLU PATTU (Tamil Nadu) -->
+      <section class="tradition-section villu">
+        <div class="t-header">
+          <span class="t-icon" style="color:var(--t-villu)">☽</span>
+          <h2>The Villu Pattu</h2>
+          <p>Tamil Nadu & Kerala</p>
+        </div>
+        <a href="villu_pattu_explorer.html" class="module-link c-villu">
+          <div class="module-info">
+            <h3>Musical Bow Explorer</h3>
+            <p>Interactive Strike & Ring simulator</p>
+          </div>
+          <span class="arrow-icon">→</span>
+        </a>
+      </section>
+
+      <!-- DECLINE DASHBOARD -->
+      <section class="tradition-section decline">
+        <div class="t-header">
+          <span class="t-icon" style="color:var(--t-decline)">⚠</span>
+          <h2>The Decline</h2>
+          <p>Heritage Risk Assessment</p>
+        </div>
+        <a href="vanishing_forms_dashboard.html" class="module-link c-decline">
+          <div class="module-info">
+            <h3>Vanishing Forms Dashboard</h3>
+            <p>Data-driven endangerment monitors</p>
+          </div>
+          <span class="arrow-icon">→</span>
+        </a>
+      </section>
+
+      <!-- CLASS CONCEPTS LENS -->
+      <section class="tradition-section class-concepts">
+        <div class="t-header">
+          <span class="t-icon" style="color:var(--t-class)">👁</span>
+          <h2>Class Concepts Lens</h2>
+          <p>Live Performance Annotation</p>
+        </div>
+        <a href="performance_lab_baul.html" class="module-link c-class">
+          <div class="module-info">
+            <h3>Baul Performance Lab</h3>
+            <p>Alapana, Pallavi, & Drone Analysis</p>
+          </div>
+          <span class="arrow-icon">→</span>
+        </a>
+        <a href="performance_lab_kinnera.html" class="module-link c-class">
+          <div class="module-info">
+            <h3>Kinnera Performance Lab</h3>
+            <p>12-Stair Swara & Graha Analysis</p>
+          </div>
+          <span class="arrow-icon">→</span>
+        </a>
+        <a href="performance_lab_villu_pattu.html" class="module-link c-class">
+          <div class="module-info">
+            <h3>Villu Pattu Performance Lab</h3>
+            <p>Kalpita vs. Manodharma Analysis</p>
+          </div>
+          <span class="arrow-icon">→</span>
+        </a>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    // Starfield Background Effect
+    const canvas = document.getElementById('stars-canvas');
+    const ctx = canvas.getContext('2d');
+    let width, height, stars = [];
+
+    function init() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      stars = Array.from({length: 150}, () => ({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        radius: Math.random() * 1.5,
+        alpha: Math.random(),
+        vx: (Math.random() - 0.5) * 0.1,
+        vy: -Math.random() * 0.2 - 0.05
+      }));
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+      stars.forEach(s => {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 230, 200, ${s.alpha})`;
+        ctx.fill();
+        s.x += s.vx;
+        s.y += s.vy;
+        s.alpha += (Math.random() - 0.5) * 0.05;
+        if(s.alpha < 0.1) s.alpha = 0.1;
+        if(s.alpha > 0.9) s.alpha = 0.9;
+        if (s.y < 0) { s.y = height; s.x = Math.random() * width; }
+      });
+      requestAnimationFrame(draw);
+    }
+
+    window.addEventListener('resize', init);
+    init();
+    draw();
+  </script>
+</body>
+</html>

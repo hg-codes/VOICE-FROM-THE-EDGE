@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kinnera 3D Anatomy Explorer</title>
+  <meta name="description" content="Interactive 3D anatomy guide for the Chenchu Kinnera." />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold: #FFD166;  --amber: #E8A100;  --copper: #C87941;
+      --bg: #07050F;  --bg-card: rgba(15,10,28,0.92);
+      --border: rgba(232,161,0,0.22);
+      --text: #F0E6D0;  --muted: #8A7A60;
+      
+      --accent-neck: #7BC87A;
+      --accent-gourd: #5DADE2;
+      --accent-fret: #C49FFF;
+      --accent-string: #FFB347;
+      --accent-peg: #FF8C69;
+    }
+    
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+    .frame { position: fixed; inset: 8px; border: 1px solid var(--border); border-radius: 16px; pointer-events: none; z-index: 1; }
+
+    .page { position: relative; z-index: 2; display: flex; flex-direction: column; flex: 1; }
+
+    header { text-align: center; padding: 24px 20px 10px; border-bottom: 1px solid var(--border); }
+    .badge {
+      display: inline-block; background: rgba(232,161,0,0.1); border: 1px solid var(--border);
+      border-radius: 100px; padding: 3px 16px; font-family: 'Cinzel', serif; font-size: 0.58rem; letter-spacing: 0.25em;
+      color: var(--amber); margin-bottom: 6px; text-transform: uppercase;
+    }
+    h1 {
+      font-family: 'Cinzel', serif; font-weight: 800; font-size: clamp(1.3rem, 3vw, 2rem);
+      background: linear-gradient(135deg, #FFD166, #E8A100, #C87941);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin-bottom: 4px;
+    }
+    .sub { font-family: 'Crimson Text', serif; font-style: italic; font-size: 0.95rem; color: var(--muted); }
+
+    .explorer {
+      flex: 1; display: grid; grid-template-columns: 1fr 400px;
+      gap: 0; max-width: 1300px; width: 100%; margin: 0 auto; padding: 24px;
+    }
+
+    /* ── LEFT: 3D Viewer ── */
+    .viewer { display: flex; flex-direction: column; position: relative; }
+    
+    .zoom-hint {
+      font-size: 0.68rem; letter-spacing: 0.15em; color: var(--muted);
+      text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px;
+    }
+    .zoom-hint::before, .zoom-hint::after { content: ''; width: 28px; height: 1px; background: var(--border); }
+
+    .canvas-wrap {
+      position: relative; width: 100%; aspect-ratio: 16 / 9;
+      border-radius: 20px; border: 1px solid var(--border);
+      background: radial-gradient(ellipse at 50% 50%, rgba(30,20,40,0.8) 0%, rgba(5,5,15,0.95) 100%);
+      overflow: hidden; cursor: grab;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+    .canvas-wrap:active { cursor: grabbing; }
+
+    #three-canvas { width: 100%; height: 100%; display: block; outline: none; }
+
+    /* 3D Annotations overlay */
+    .annotation {
+      position: absolute; transform: translate(-50%, -50%);
+      pointer-events: auto; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      transition: opacity 0.3s, transform 0.3s;
+      z-index: 10;
+    }
+    .annotation.hidden { opacity: 0; pointer-events: none; transform: translate(-50%, -50%) scale(0.5); }
+
+    .ann-dot {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: #fff; box-shadow: 0 0 10px #fff;
+      border: 2px solid rgba(0,0,0,0.5);
+      position: relative;
+    }
+    .ann-dot::after {
+      content:''; position: absolute; inset: -6px; border-radius: 50%; border: 1px solid #fff;
+      animation: pulse 2s infinite ease-out; pointer-events: none;
+    }
+    @keyframes pulse { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(2.5); opacity: 0; } }
+    
+    .ann-label {
+      background: rgba(10, 5, 20, 0.85); border: 1px solid rgba(255,255,255,0.2);
+      padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;
+      letter-spacing: 0.05em; color: #fff; text-transform: uppercase;
+      font-family: 'Inter', sans-serif; backdrop-filter: blur(4px);
+      white-space: nowrap; pointer-events: none;
+    }
+
+    .annotation:hover .ann-dot { transform: scale(1.2); }
+    .annotation:hover .ann-label { border-color: var(--amber); color: var(--gold); }
+
+    /* Controls overlay */
+    .viewer-controls { position: absolute; bottom: 20px; left: 0; right: 0; display: flex; justify-content: center; gap: 12px; pointer-events: none; }
+    
+    .btn {
+      pointer-events: auto;
+      padding: 8px 18px; border: 1px solid var(--border); border-radius: 100px;
+      background: rgba(20,15,30,0.85); color: var(--amber); backdrop-filter: blur(8px);
+      font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase;
+      cursor: pointer; font-family: 'Inter', sans-serif; font-weight: 600;
+      transition: all 0.2s ease;
+    }
+    .btn:hover { background: rgba(232,161,0,0.15); border-color: var(--gold); color: var(--gold); }
+
+    /* ── RIGHT: Info Panel ── */
+    .info-panel { padding: 0 0 0 24px; display: flex; flex-direction: column; }
+    
+    .card-stack { position: relative; flex: 1; }
+    
+    .info-card {
+      position: absolute; inset: 0;
+      border-radius: 18px; border: 1px solid var(--border);
+      background: var(--bg-card); backdrop-filter: blur(16px);
+      padding: 26px; overflow-y: auto;
+      opacity: 0; visibility: hidden; transform: translateX(20px);
+      transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .info-card.active { opacity: 1; visibility: visible; transform: translateX(0); z-index: 5; }
+
+    /* Welcome view inside card */
+    .welcome-card h2 { font-family: 'Cinzel', serif; font-size: 1.25rem; color: var(--gold); margin-bottom: 12px; }
+    .welcome-card p { font-family: 'Crimson Text', serif; font-size: 1.05rem; color: var(--muted); line-height: 1.6; margin-bottom: 16px; }
+
+    .part-list { display: flex; flex-direction: column; gap: 8px; }
+    .pl-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .pl-item:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); transform: translateX(4px); }
+    .pl-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.5); }
+    .pl-name { font-size: 0.85rem; font-weight: 600; letter-spacing: 0.05em; font-family: 'Inter', sans-serif;}
+
+    /* Detail view inside card */
+    .pc-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+    .pc-bar { width: 4px; min-height: 56px; border-radius: 4px; flex-shrink: 0; }
+    .pc-name { font-family: 'Cinzel', serif; font-size: 1.3rem; font-weight: 700; line-height: 1.2; margin-bottom: 4px; }
+    .pc-local { font-family: 'Crimson Text', serif; font-style: italic; font-size: 1rem; color: var(--muted); }
+
+    .info-block { margin-bottom: 16px; }
+    .info-lbl { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+    .info-txt { font-family: 'Crimson Text', serif; font-size: 1.05rem; line-height: 1.6; color: rgba(240,230,208,0.9); }
+
+    .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+    .fun-fact {
+      padding: 14px 16px; background: rgba(232,161,0,0.06);
+      border: 1px solid rgba(232,161,0,0.18); border-radius: 10px;
+      font-family: 'Crimson Text', serif; font-style: italic;
+      font-size: 1rem; color: var(--gold); line-height: 1.55;
+    }
+    .fun-fact::before { content: '✦  '; }
+
+    footer {
+      text-align: center; padding: 16px 24px;
+      font-family: 'Crimson Text', serif; font-style: italic;
+      font-size: 0.9rem; color: var(--muted); z-index: 2;
+    }
+
+    @media (max-width: 900px) {
+      .explorer { grid-template-columns: 1fr; padding: 14px; }
+      .info-panel { padding: 14px 0 0; }
+      .canvas-wrap { aspect-ratio: 4/3; }
+      .card-stack { min-height: 400px; }
+    }
+  </style>
+
+  <!-- Include Three.js, OrbitControls, and Tween.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+</head>
+<body>
+<!-- INJECTED BACK NAVIGATION -->
+<div id="exhib-back-btn" style="position:fixed; top:20px; left:20px; z-index:999999;">
+<a href="index.html" style="background:rgba(15,10,25,0.75); border:1px solid rgba(232,161,0,0.3); color:#F5ECD7; text-decoration:none; padding:8px 16px; border-radius:100px; font-family:sans-serif; font-size:0.85rem; font-weight:500; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); display:flex; align-items:center; gap:8px; box-shadow:0 4px 20px rgba(0,0,0,0.5); transition:all 0.3s ease; text-transform:uppercase; letter-spacing:0.1em;" onmouseover="this.style.background='rgba(232,161,0,0.25)'; this.style.borderColor='#E8A100';" onmouseout="this.style.background='rgba(15,10,25,0.75)'; this.style.borderColor='rgba(232,161,0,0.3)';">
+   <span style="font-size:1.2em; margin-top:-2px;">&#10229;</span> Exhibition Hub
+</a>
+</div>
+
+
+<canvas id="stars"></canvas>
+<div class="frame"></div>
+
+<div class="page">
+  <header>
+    <div class="badge">✦ Real 3D Interactive Guide ✦</div>
+    <h1>Chenchu Kinnera Anatomy</h1>
+    <p class="sub">Drag to rotate, scroll to zoom. Click labels in 3D to inspect parts.</p>
+  </header>
+
+  <div class="explorer">
+    
+    <!-- ── LEFT: 3D Viewer ── -->
+    <div class="viewer">
+      <div class="zoom-hint">← Explore the 3D Model →</div>
+      
+      <div class="canvas-wrap" id="canvas-container">
+        <canvas id="three-canvas"></canvas>
+        <div id="annotations-container"></div>
+        
+        <div class="viewer-controls">
+          <button class="btn" id="btn-reset-cam">Reset View</button>
+          <button class="btn" id="btn-auto-rotate">Pause Rotation</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RIGHT: Info Panel ── -->
+    <div class="info-panel">
+      <div class="card-stack">
+        
+        <!-- Welcome Card -->
+        <div class="info-card welcome-card active" id="card-welcome">
+          <h2>The Chenchu Kinnera</h2>
+          <p>
+            An ancient, handcrafted stringed instrument native to Telangana. Historically played by the Chenchu and Dakkali tribes, it is used to recount epic ballads and heroic tales.
+          </p>
+          <p>
+            Unlike modern factory instruments, the Kinnera is built entirely from the forest — bamboo, dried bottle gourds, animal horns, and honey-wax.
+          </p>
+          <div class="info-lbl" style="margin-top:20px;">Select a part to explore</div>
+          <div class="part-list" id="part-list"></div>
+        </div>
+
+        <!-- Detail Card -->
+        <div class="info-card" id="card-detail">
+          <div class="pc-header">
+            <div class="pc-bar" id="pc-bar"></div>
+            <div>
+              <div class="pc-name" id="pc-name">Part Name</div>
+              <div class="pc-local" id="pc-local">Local Name</div>
+            </div>
+          </div>
+          <div class="info-block">
+            <div class="info-lbl">Description</div>
+            <div class="info-txt" id="pc-desc">...</div>
+          </div>
+          <div class="divider"></div>
+          <div class="info-block">
+            <div class="info-lbl">Material</div>
+            <div class="info-txt" id="pc-mat" style="color:var(--muted);">...</div>
+          </div>
+          <div class="fun-fact" id="pc-fact">...</div>
+          <div style="margin-top:24px; text-align:center;">
+             <button class="btn" id="btn-back-overview">← Back to Overview</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+  
+  <footer>The 12-Fret Kinnera — A Vanishing Artform of the Deccan Plateau</footer>
+</div>
+
+<script>
+/* ================================================================
+   KINNERA 3D ANATOMY EXPLORER
+   ================================================================ */
+
+// === 1. Data Definitions ===
+const PARTS = {
+  neck: {
+    id: 'neck', name: 'Bamboo Neck', local: 'Dandi / Stem', color: 'var(--accent-neck)', hex: 0x7BC87A,
+    desc: 'The central spine of the Kinnera. It holds the string tension and provides a mounting surface for the frets and resonators. It is carefully hollowed out to aid in transmitting vibrations.',
+    mat: 'Thick, seasoned bamboo stalk.',
+    fact: 'Crafting the Dandi involves meticulously selecting bamboo of the right diameter and acoustic resonance from the Nallamala forests.',
+    targetPos: new THREE.Vector3(0, 0, 0), camPos: new THREE.Vector3(0, 8, 12)
+  },
+  gourds: {
+    id: 'gourds', name: 'Resonators', local: 'Tumba (তুম্বা)', color: 'var(--accent-gourd)', hex: 0x5DADE2,
+    desc: 'Three hollow, sun-dried bottle gourds attached beneath the bamboo neck. They act as acoustic chambers, amplifying the vibrations of the strings to produce a deep, resonant sound. The 3-gourd model (like Darshanam Mogilaiah\'s) is the most complex.',
+    mat: 'Dried bottle gourds (Lagenaria siceraria).',
+    fact: 'The bottoms of the gourds are intentionally left open so the sound can escape and press against the player\'s chest, transferring physical vibration directly to the musician.',
+    targetPos: new THREE.Vector3(0, -3, 0), camPos: new THREE.Vector3(0, -6, 12)
+  },
+  frets: {
+    id: 'frets', name: '12 Frets', local: 'Metlu', color: 'var(--accent-fret)', hex: 0xC49FFF,
+    desc: 'Raised scales along the neck where the player presses the string to change pitches. There are typically 12 frets on the grand Kinnera, allowing for complex melodies.',
+    mat: 'Traditionally Pangolin scales or animal horn, affixed with wild honey-wax.',
+    fact: 'The frets are not nailed or glued conventionally. They are mounted on blobs of pure honey-wax, allowing fine intonation adjustments by warming and sliding them.',
+    targetPos: new THREE.Vector3(0, 1.5, 0), camPos: new THREE.Vector3(0, 6, 8)
+  },
+  strings: {
+    id: 'strings', name: 'Strings', local: 'Taar / Nerves', color: 'var(--accent-string)', hex: 0xFFB347,
+    desc: 'The vocal cords of the instrument. Traditionally made of animal nerve or human/horse hair, but modern players use metallic wires. They are plucked while the fingers dance along the frets.',
+    mat: 'Steel/Bronze wire (Historically organic fibers).',
+    fact: 'The Kinnera typically has 2 or 3 strings — one dedicated to carrying the complex melody, while others act as a rhythmic drone accompanying the storyteller.',
+    targetPos: new THREE.Vector3(-3, 2.5, 0), camPos: new THREE.Vector3(-3, 4, 10)
+  },
+  pegs: {
+    id: 'pegs', name: 'Tuning Pegs', local: 'Khunti', color: 'var(--accent-peg)', hex: 0xFF8C69,
+    desc: 'Wooden pegs driven through holes at the top end of the bamboo. They anchor the strings and are turned to adjust their tension and pitch.',
+    mat: 'Hand-carved hardwood.',
+    fact: 'Tuning requires a strong grip and subtle ear. As a friction peg, achieving stable tuning takes immense practice.',
+    targetPos: new THREE.Vector3(-9, 0, 0), camPos: new THREE.Vector3(-12, 3, 8)
+  }
+};
+
+const PART_ORDER = ['neck', 'gourds', 'frets', 'strings', 'pegs'];
+
+// === 2. Three.js Scene Setup ===
+const canvasWrap = document.getElementById('canvas-container');
+const canvas = document.getElementById('three-canvas');
+const annContainer = document.getElementById('annotations-container');
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, canvasWrap.clientWidth / canvasWrap.clientHeight, 0.1, 100);
+camera.position.set(0, 2, 22);
+
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+renderer.setSize(canvasWrap.clientWidth, canvasWrap.clientHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.minDistance = 5;
+controls.maxDistance = 35;
+controls.target.set(0, 0, 0);
+
+let autoRotate = true;
+
+// Lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
+const dirLight = new THREE.DirectionalLight(0xfff0dd, 0.8);
+dirLight.position.set(10, 15, 10);
+scene.add(dirLight);
+const backLight = new THREE.DirectionalLight(0xaaccff, 0.4);
+backLight.position.set(-10, 5, -10);
+scene.add(backLight);
+
+// === 3. Constructing the 3D Kinnera ===
+const kinneraGroup = new THREE.Group();
+
+// Materials
+const matWood = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.8, metalness: 0.1 }); // Bamboo
+const matGourd = new THREE.MeshStandardMaterial({ color: 0xD2691E, roughness: 0.7, metalness: 0.0 }); // Gourds
+const matFret = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5, metalness: 0.2 });  // Horn
+const matString = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.2, metalness: 0.8 }); // Wire
+const matPeg = new THREE.MeshStandardMaterial({ color: 0x5C4033, roughness: 0.9, metalness: 0.1 });  // Dark wood
+
+// A. Bamboo Neck
+const neckGeo = new THREE.CylinderGeometry(0.4, 0.4, 22, 32);
+neckGeo.rotateZ(Math.PI / 2);
+const neck = new THREE.Mesh(neckGeo, matWood);
+kinneraGroup.add(neck);
+
+// B. 3 Gourds (Resonators)
+const gourdGeo = new THREE.SphereGeometry(2.4, 32, 24);
+// cut off top to make it look attached
+const gourdPositions = [-5.5, 0, 5.5];
+gourdPositions.forEach(x => {
+  const g = new THREE.Mesh(gourdGeo, matGourd);
+  g.scale.set(1, 0.85, 1); // slightly squashed
+  g.position.set(x, -2.5, 0);
+  kinneraGroup.add(g);
+  
+  // Connection stem
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 1.5), matWood);
+  stem.position.set(x, -0.6, 0);
+  kinneraGroup.add(stem);
+});
+
+// C. Frets (12 steps)
+const fretGeo = new THREE.BoxGeometry(0.2, 0.4, 1.2);
+const fretBaseGeo = new THREE.CylinderGeometry(0.3, 0.5, 0.3, 16); // wax base
+for (let i = 0; i < 12; i++) {
+  const x = -3 + i * 0.9;
+  
+  const wax = new THREE.Mesh(fretBaseGeo, new THREE.MeshStandardMaterial({color: 0x111111}));
+  wax.position.set(x, 0.5, 0);
+  kinneraGroup.add(wax);
+
+  const f = new THREE.Mesh(fretGeo, matFret);
+  f.position.set(x, 0.75, 0);
+  kinneraGroup.add(f);
+}
+
+// D. Strings (2-3)
+const strGeo = new THREE.CylinderGeometry(0.02, 0.02, 21);
+strGeo.rotateZ(Math.PI / 2);
+const stringZOffsets = [-0.15, 0, 0.15];
+stringZOffsets.forEach(z => {
+  const s = new THREE.Mesh(strGeo, matString);
+  s.position.set(0, 0.95, z);
+  kinneraGroup.add(s);
+});
+
+// E. Tuning Pegs
+const pegGeo = new THREE.CylinderGeometry(0.1, 0.15, 1.5);
+[-9.5, -9, -8.5].forEach((x, idx) => {
+  const p = new THREE.Mesh(pegGeo, matPeg);
+  p.rotation.x = Math.PI / 4 * (idx % 2 === 0 ? 1 : -1);
+  p.position.set(x, 0, 0);
+  kinneraGroup.add(p);
+});
+
+// Tilt the instrument dynamically
+kinneraGroup.rotation.y = -0.3;
+kinneraGroup.rotation.z = 0.1;
+scene.add(kinneraGroup);
+
+// === 4. Annotations Setup ===
+const annotationsHTML = [];
+
+PART_ORDER.forEach(key => {
+  const p = PARTS[key];
+  
+  // Create HTML element
+  const el = document.createElement('div');
+  el.className = 'annotation';
+  el.innerHTML = `
+    <div class="ann-dot" style="box-shadow: 0 0 12px ${p.color}; border-color: ${p.color}"></div>
+    <div class="ann-label" style="border-left: 3px solid ${p.color}">${p.name}</div>
+  `;
+  el.addEventListener('click', () => focusPart(key));
+  annContainer.appendChild(el);
+
+  // Generate invisible anchor in 3D scene (attached to group so it rotates with it)
+  const anchor = new THREE.Object3D();
+  anchor.position.copy(p.targetPos);
+  kinneraGroup.add(anchor);
+
+  annotationsHTML.push({ key, element: el, anchor });
+});
+
+
+// === 5. UI Logic & Interactions ===
+function buildMenu() {
+  const list = document.getElementById('part-list');
+  PART_ORDER.forEach(key => {
+    const p = PARTS[key];
+    const item = document.createElement('div');
+    item.className = 'pl-item';
+    item.innerHTML = `
+      <div class="pl-dot" style="border-color:${p.color}; box-shadow: 0 0 8px ${p.color}80"></div>
+      <div class="pl-name" style="color:${p.color}">${p.name}</div>
+    `;
+    item.addEventListener('click', () => focusPart(key));
+    list.appendChild(item);
+  });
+  
+  document.getElementById('btn-back-overview').addEventListener('click', resetView);
+  document.getElementById('btn-reset-cam').addEventListener('click', resetView);
+  
+  const rotBtn = document.getElementById('btn-auto-rotate');
+  rotBtn.addEventListener('click', () => {
+    autoRotate = !autoRotate;
+    rotBtn.textContent = autoRotate ? "Pause Rotation" : "Resume Rotation";
+  });
+}
+
+function focusPart(key) {
+  const p = PARTS[key];
+  autoRotate = false;
+  document.getElementById('btn-auto-rotate').textContent = "Resume Rotation";
+
+  // Hide labels temporarily
+  document.querySelectorAll('.annotation').forEach(el => el.classList.add('hidden'));
+
+  // Update UI Card
+  document.getElementById('card-welcome').classList.remove('active');
+  document.getElementById('card-detail').classList.add('active');
+  
+  document.getElementById('pc-bar').style.background = p.color;
+  document.getElementById('pc-bar').style.boxShadow = `0 0 15px ${p.color}`;
+  document.getElementById('pc-name').textContent = p.name;
+  document.getElementById('pc-name').style.color = p.color;
+  document.getElementById('pc-local').textContent = p.local;
+  document.getElementById('pc-desc').textContent = p.desc;
+  document.getElementById('pc-mat').textContent = p.mat;
+  document.getElementById('pc-fact').textContent = p.fact;
+
+  // Tween Camera and Target
+  // We need world position of the anchor because group is rotated
+  const wpTarget = new THREE.Vector3();
+  const index = annotationsHTML.findIndex(a => a.key === key);
+  annotationsHTML[index].anchor.getWorldPosition(wpTarget);
+
+  // We rotate the intended camera position relative to the group's rotation for dynamic view
+  const relCam = p.camPos.clone().applyEuler(kinneraGroup.rotation);
+
+  new TWEEN.Tween(camera.position)
+    .to({ x: relCam.x, y: relCam.y, z: relCam.z }, 1200)
+    .easing(TWEEN.Easing.Cubic.Out)
+    .start();
+
+  new TWEEN.Tween(controls.target)
+    .to({ x: wpTarget.x, y: wpTarget.y, z: wpTarget.z }, 1200)
+    .easing(TWEEN.Easing.Cubic.Out)
+    .onComplete(() => {
+      // Show ONLY the clicked label
+      annotationsHTML.forEach(a => {
+        if (a.key === key) a.element.classList.remove('hidden');
+      });
+    })
+    .start();
+}
+
+function resetView() {
+  document.getElementById('card-detail').classList.remove('active');
+  document.getElementById('card-welcome').classList.add('active');
+  
+  // Show all labels
+  document.querySelectorAll('.annotation').forEach(el => el.classList.remove('hidden'));
+  
+  autoRotate = true;
+  document.getElementById('btn-auto-rotate').textContent = "Pause Rotation";
+
+  new TWEEN.Tween(camera.position)
+    .to({ x: 0, y: 2, z: 22 }, 1500)
+    .easing(TWEEN.Easing.Cubic.Out)
+    .start();
+
+  new TWEEN.Tween(controls.target)
+    .to({ x: 0, y: 0, z: 0 }, 1500)
+    .easing(TWEEN.Easing.Cubic.Out)
+    .start();
+}
+
+// === 6. Render Loop ===
+
+// Sync HTML annotations with 3D anchors
+function updateAnnotations() {
+  const widthHalf = canvasWrap.clientWidth / 2;
+  const heightHalf = canvasWrap.clientHeight / 2;
+
+  annotationsHTML.forEach(ann => {
+    // get world pos
+    const wp = new THREE.Vector3();
+    ann.anchor.getWorldPosition(wp);
+    
+    // project to 2D
+    wp.project(camera);
+    
+    // Convert to CSS coordinates
+    const x = (wp.x * widthHalf) + widthHalf;
+    const y = -(wp.y * heightHalf) + heightHalf;
+    
+    // Check if behind camera
+    if (wp.z > 1) {
+      ann.element.style.display = 'none';
+    } else {
+      ann.element.style.display = 'flex';
+      ann.element.style.left = `${x}px`;
+      ann.element.style.top = `${y}px`;
+    }
+  });
+}
+
+function animate(time) {
+  requestAnimationFrame(animate);
+  TWEEN.update(time);
+  controls.update();
+
+  if (autoRotate) {
+    kinneraGroup.rotation.y += 0.002;
+  }
+
+  updateAnnotations();
+  renderer.render(scene, camera);
+}
+
+// Handle resizing
+window.addEventListener('resize', () => {
+  const width = canvasWrap.clientWidth;
+  const height = canvasWrap.clientHeight;
+  renderer.setSize(width, height);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+
+  // stars canvas resize
+  const c = document.getElementById('stars');
+  if(c) { c.width = window.innerWidth; c.height = window.innerHeight; }
+});
+
+// Background Stars Effect
+function initStars() {
+  const c = document.getElementById('stars');
+  c.width = window.innerWidth; c.height = window.innerHeight;
+  const ctx = c.getContext('2d');
+  const stars = Array.from({ length: 150 }, () => ({
+    x: Math.random() * c.width, y: Math.random() * c.height,
+    r: Math.random() * 1.5, a: Math.random(), s: Math.random() * 0.005 + 0.001,
+  }));
+  (function draw() {
+    ctx.clearRect(0, 0, c.width, c.height);
+    stars.forEach(s => {
+      s.a += s.s;
+      ctx.globalAlpha = (Math.sin(s.a) + 1) / 2 * 0.4;
+      ctx.fillStyle = '#FFF8E0';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(draw);
+  })();
+}
+
+// Start
+buildMenu();
+initStars();
+requestAnimationFrame(animate);
+
+</script>
+</body>
+</html>

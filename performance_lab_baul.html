@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Baul Performance Lab — Voices from the Edge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,500&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:         #0D0A05;
+      --bg-mid:     #161008;
+      --bg-card:    #1C1308;
+      --bg-card2:   #22180A;
+      --border:     #2E1E08;
+      --border-lt:  #3E2A0A;
+      --amber:      #D4830A;
+      --amber-lt:   #F0A832;
+      --amber-dk:   #8A5005;
+      --gold:       #F0C060;
+      --saffron:    #E87820;
+      --sage:       #6A8870;
+      --teal:       #1B7070;
+      --teal-lt:    #3AADA0;
+      --brick:      #C0302A;
+      --cream:      #F2E8D9;
+      --text:       #E8D8C0;
+      --text-mid:   #A8906A;
+      --text-mute:  #705838;
+      --white:      #FFFFFF;
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-mid); }
+    ::-webkit-scrollbar-thumb { background: var(--amber-dk); border-radius: 3px; }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.7rem 1.5rem;
+      background: var(--bg-mid);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-brand { display: flex; align-items: center; gap: 0.75rem; }
+    .brand-icon { font-size: 1.6rem; color: var(--amber-lt); }
+    .brand-text h1 { font-family: 'Playfair Display', serif; font-size: 1.05rem; color: var(--white); letter-spacing: 0.01em; }
+    .brand-text p  { font-size: 0.7rem; color: var(--text-mute); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 1px; }
+    .header-tag span {
+      padding: 0.38rem 1.1rem; border-radius: 4px;
+      background: var(--amber-dk); border: 1px solid var(--amber);
+      color: var(--amber-lt); font-size: 0.82rem; font-weight: 600;
+      letter-spacing: 0.04em; font-family: 'Inter', sans-serif;
+    }
+    .live-badge {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+      color: var(--text-mute);
+    }
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--text-mute);
+      transition: background 0.3s;
+    }
+    .live-dot.active { background: var(--brick); animation: pulse-dot 1.2s ease infinite; }
+    @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+
+    /* ── Main Layout ─────────────────────────────────────────────────── */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      height: calc(100vh - 56px);
+    }
+
+    /* ── Video Column ────────────────────────────────────────────────── */
+    .video-column {
+      display: flex; flex-direction: column;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .video-wrapper { position: relative; flex: 1; background: #000; }
+    #yt-player { width: 100%; height: 100%; }
+    .video-wrapper iframe { width: 100%; height: 100%; display: block; }
+
+    .video-alert {
+      position: absolute; top: 1rem; left: 50%;
+      transform: translateX(-50%) translateY(-80px);
+      background: var(--amber); color: #000;
+      font-size: 0.85rem; font-weight: 700;
+      padding: 0.45rem 1.4rem; border-radius: 100px;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      transition: transform 0.4s cubic-bezier(.34,1.56,.64,1), opacity 0.4s;
+      opacity: 0; pointer-events: none; z-index: 50;
+    }
+    .video-alert.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* ── Tala / Drone Strip ──────────────────────────────────────────── */
+    .tala-strip {
+      padding: 0.7rem 1.2rem;
+      background: var(--bg-mid);
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .tala-label {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-mute); white-space: nowrap;
+    }
+    .tala-label span { color: var(--amber-lt); font-weight: 600; }
+    .tala-dots { display: flex; gap: 7px; align-items: center; }
+    .tala-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--border-lt);
+      transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+    }
+    .tala-dot.beat {
+      background: var(--amber-lt);
+      box-shadow: 0 0 10px var(--amber);
+      transform: scale(1.3);
+    }
+    .tala-dot.accent {
+      background: var(--gold);
+      box-shadow: 0 0 14px var(--gold);
+      transform: scale(1.6);
+    }
+    .tala-dot.drone {
+      background: var(--teal-lt);
+      box-shadow: 0 0 8px var(--teal);
+      transform: scale(1.1);
+      animation: drone-pulse 1.4s ease infinite;
+    }
+    @keyframes drone-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .instrument-badge { margin-left: auto; }
+    .instr-tag {
+      font-size: 0.72rem; padding: 0.22rem 0.65rem;
+      border-radius: 3px; font-weight: 600; letter-spacing: 0.04em;
+      background: var(--bg-card2); border: 1px solid var(--border-lt);
+      color: var(--text-mid); transition: all 0.3s;
+    }
+    .instr-tag.active { background: var(--amber-dk); border-color: var(--amber); color: var(--white); }
+
+    /* ── Right Panel ─────────────────────────────────────────────────── */
+    .right-panel { display: flex; flex-direction: column; overflow: hidden; background: var(--bg-mid); }
+
+    /* Concept card */
+    .concept-card {
+      padding: 1.2rem 1.2rem 1rem;
+      border-bottom: 1px solid var(--border);
+      position: relative; overflow: hidden;
+      transition: background 0.4s;
+      min-height: 210px;
+    }
+    .concept-card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+      background: var(--amber); transition: background 0.4s;
+    }
+    .concept-card.alapana::before  { background: var(--teal-lt); }
+    .concept-card.pallavi::before  { background: var(--amber-lt); }
+    .concept-card.charanam::before { background: var(--saffron); }
+    .concept-card.loop::before     { background: var(--gold); }
+    .concept-card.intro::before    { background: var(--sage); }
+
+    .concept-card.alert-flash { animation: card-flash 0.7s ease; }
+    @keyframes card-flash {
+      0% { background: rgba(212,131,10,0); }
+      30% { background: rgba(212,131,10,0.2); }
+      100% { background: transparent; }
+    }
+
+    /* Type tags */
+    .concept-type-tag {
+      display: inline-block; padding: 0.18rem 0.65rem; border-radius: 3px;
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      margin-bottom: 0.55rem; transition: all 0.3s;
+    }
+    .tag-intro    { background: rgba(106,136,112,0.15); color: #8ABAA2; border: 1px solid #2A4535; }
+    .tag-alapana  { background: rgba(58,173,160,0.15); color: var(--teal-lt); border: 1px solid #0E4040; }
+    .tag-pallavi  { background: rgba(212,131,10,0.2);  color: var(--amber-lt); border: 1px solid var(--amber-dk); }
+    .tag-charanam { background: rgba(232,120,32,0.15); color: var(--saffron); border: 1px solid #6A3A05; }
+    .tag-loop     { background: rgba(240,192,96,0.15); color: var(--gold); border: 1px solid #6A5005; }
+
+    .concept-title {
+      font-family: 'Playfair Display', serif; font-size: 1.22rem;
+      color: var(--white); line-height: 1.3; margin-bottom: 0.5rem;
+    }
+    .concept-desc {
+      font-size: 0.83rem; color: var(--text-mid); line-height: 1.68;
+      margin-bottom: 0.7rem;
+    }
+
+    /* Alert pill */
+    .alert-pill {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.22rem 0.75rem; border-radius: 100px;
+      background: rgba(212,131,10,0.15); border: 1px solid var(--amber);
+      color: var(--amber-lt); font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .alert-pill.visible { opacity: 1; animation: pill-pop 0.5s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes pill-pop { 0%{transform:scale(0.7)} 100%{transform:scale(1)} }
+    .alert-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); animation: pulse-dot 1s ease infinite; }
+
+    /* Gamaka visualizer — wave underneath concept card */
+    .gamaka-bar {
+      margin-top: 0.85rem;
+      height: 28px; position: relative; overflow: hidden;
+      opacity: 0; transition: opacity 0.4s;
+    }
+    .gamaka-bar.show { opacity: 1; }
+    .gamaka-wave {
+      position: absolute; bottom: 0; left: 0; width: 200%;
+      height: 28px; background: transparent;
+    }
+    .gamaka-wave path { fill: none; stroke: var(--amber-lt); stroke-width: 2; opacity: 0.5; }
+
+    /* Progress */
+    .event-progress { margin-top: 0.7rem; }
+    .progress-track { width: 100%; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--amber-lt); width: 0%; transition: width 0.5s linear; border-radius: 2px; }
+    .progress-fill.gold     { background: var(--gold); }
+    .progress-fill.saffron  { background: var(--saffron); }
+    .progress-fill.teal-lt  { background: var(--teal-lt); }
+    .progress-fill.sage     { background: var(--sage); }
+    .progress-meta { display: flex; justify-content: space-between; margin-top: 0.3rem; }
+    .progress-meta span { font-size: 0.68rem; color: var(--text-mute); font-family: 'JetBrains Mono', monospace; }
+
+    /* Seek btn */
+    .seek-btn {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      margin-top: 0.5rem; padding: 0.22rem 0.7rem; border-radius: 4px;
+      background: transparent; border: 1px solid var(--border-lt);
+      color: var(--text-mute); font-size: 0.72rem; cursor: pointer;
+      transition: all 0.2s; font-family: 'Inter', sans-serif;
+    }
+    .seek-btn:hover { border-color: var(--amber-lt); color: var(--amber-lt); }
+
+    /* ── Timeline ────────────────────────────────────────────────────── */
+    .timeline-header {
+      padding: 0.65rem 1.2rem;
+      font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-mute); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .tl-count { color: var(--amber-lt); font-weight: 600; }
+    .timeline-list { flex: 1; overflow-y: auto; padding: 0.5rem 0; }
+
+    .tl-item {
+      display: flex; align-items: flex-start; gap: 0.75rem;
+      padding: 0.6rem 1.2rem; cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background 0.2s, border-color 0.2s;
+      position: relative;
+    }
+    .tl-item:hover { background: var(--bg-card); }
+    .tl-item:hover .tl-play-icon { opacity: 1; transform: scale(1); }
+    .tl-item:hover .tl-time { opacity: 0; }
+    .tl-item.active { background: var(--bg-card2); border-left-color: var(--amber-lt); }
+    .tl-item.active .tl-title { color: var(--white); }
+    .tl-item.seek-flash { animation: seek-confirm 0.5s ease; }
+    @keyframes seek-confirm {
+      0%   { background: rgba(240,168,50,0); }
+      30%  { background: rgba(240,168,50,0.28); }
+      100% { background: var(--bg-card2); }
+    }
+    /* Play icon overlays the timestamp on hover */
+    .tl-time-wrap { position: relative; width: 44px; flex-shrink: 0; }
+    .tl-time {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+      color: var(--text-mute); white-space: nowrap; padding-top: 1px;
+      transition: opacity 0.15s;
+    }
+    .tl-play-icon {
+      position: absolute; top: 0; left: 0;
+      width: 44px; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transform: scale(0.7);
+      transition: opacity 0.15s, transform 0.15s;
+      color: var(--amber-lt); font-size: 1rem;
+    }
+
+    .tl-time {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+      color: var(--text-mute); white-space: nowrap; padding-top: 1px; min-width: 44px;
+    }
+    .tl-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--border-lt); flex-shrink: 0; margin-top: 5px;
+      transition: background 0.2s;
+    }
+    .tl-item.active .tl-dot { background: var(--amber-lt); box-shadow: 0 0 6px var(--amber); }
+    .tl-content { flex: 1; min-width: 0; }
+    .tl-title { font-size: 0.82rem; font-weight: 600; color: var(--text-mid); line-height: 1.3; }
+    .tl-sub   { font-size: 0.72rem; color: var(--text-mute); margin-top: 2px; }
+    .tl-type-badge {
+      font-size: 0.62rem; padding: 0.1rem 0.38rem; border-radius: 2px; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase; flex-shrink: 0; margin-top: 3px;
+    }
+
+    /* Placeholder */
+    .player-placeholder {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: #080500; gap: 1rem;
+    }
+    .ph-icon { font-size: 3rem; color: var(--amber-dk); }
+    .ph-text { font-size: 0.85rem; color: var(--text-mute); text-align: center; }
+    .ph-url  { font-size: 0.72rem; color: var(--text-mute); font-family: 'JetBrains Mono', monospace; margin-top: 0.3rem; }
+
+    /* ── Concept Key ─────────────────────────────────────────────────── */
+    .concept-key {
+      display: flex; gap: 0.5rem; flex-wrap: wrap;
+      padding: 0.55rem 1.2rem; border-top: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .key-item {
+      display: flex; align-items: center; gap: 0.3rem;
+      font-size: 0.65rem; color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .key-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* ── Responsive ──────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      .right-panel { border-top: 1px solid var(--border); }
+      .video-column { border-right: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════ HEADER ══════ -->
+<header>
+  <div class="header-brand">
+    <div class="brand-icon">𝄞</div>
+    <div class="brand-text">
+      <h1>Performance Lab</h1>
+      <p>Baul · Live Annotation</p>
+    </div>
+  </div>
+  <div class="header-tag">
+    <span>Baul — Parvathy Baul</span>
+  </div>
+  <div class="live-badge">
+    <div class="live-dot" id="live-dot"></div>
+    <span id="live-label">PAUSED</span>
+  </div>
+</header>
+
+<!-- ══════ MAIN ══════ -->
+<div class="main">
+
+  <!-- Left: Video + Strip -->
+  <div class="video-column">
+    <div class="video-wrapper">
+      <div id="yt-player">
+        <div class="player-placeholder">
+          <div class="ph-icon">♪</div>
+          <div class="ph-text">Loading YouTube player…<br>Allow a moment for the API to initialize.</div>
+          <div class="ph-url">youtu.be/nQQBKkiPEQk</div>
+        </div>
+      </div>
+      <div class="video-alert" id="video-alert"></div>
+    </div>
+
+    <!-- Tala / Drone strip -->
+    <div class="tala-strip">
+      <div class="tala-label">Mode: <span id="tala-name">—</span></div>
+      <div class="tala-dots" id="tala-dots"></div>
+      <div class="instrument-badge">
+        <div class="instr-tag" id="instr-tag">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="right-panel">
+
+    <!-- Active concept -->
+    <div class="concept-card" id="concept-card">
+      <div class="concept-type-tag tag-intro" id="concept-type-tag">Intro</div>
+      <div class="concept-title" id="concept-title">Waiting for playback…</div>
+      <div class="concept-desc" id="concept-desc">Press play on the video to begin live annotation. The panel updates in real time as Parvathy Baul performs.</div>
+      <div class="alert-pill" id="alert-pill"><span class="alert-dot"></span><span id="alert-text">—</span></div>
+      <div class="event-progress">
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="progress-meta">
+          <span id="prog-elapsed">0:00</span>
+          <span id="prog-duration">—</span>
+        </div>
+      </div>
+      <button class="seek-btn" id="seek-start-btn" onclick="seekToEvent()" style="display:none">⏮ Jump to segment start</button>
+    </div>
+
+    <!-- Concept key legend -->
+    <div class="concept-key">
+      <div class="key-item"><div class="key-dot" style="background:#6A8870"></div>Intro</div>
+      <div class="key-item"><div class="key-dot" style="background:#3AADA0"></div>Alapana</div>
+      <div class="key-item"><div class="key-dot" style="background:#F0A832"></div>Pallavi</div>
+      <div class="key-item"><div class="key-dot" style="background:#E87820"></div>Charanam</div>
+      <div class="key-item"><div class="key-dot" style="background:#F0C060"></div>Cyclical Loop</div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="timeline-header">
+      <span>Performance Timeline</span>
+      <span class="tl-count" id="tl-count">— events</span>
+    </div>
+    <div class="timeline-list" id="timeline-list"></div>
+  </div>
+</div>
+
+<!-- ══════ SCRIPT ══════ -->
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+const baulData = {
+  title: "Baul Live: Parvathy Baul (Song of Compassion)",
+  videoId: "nQQBKkiPEQk",
+  droneDefault: "Ektara Drone",
+  events: [
+    {
+      start: 0, end: 2659,
+      type: "intro", title: "Performance & Dialogue",
+      description: "Parvathy Baul speaks about the esoteric poetry of the 8th-century Yogi, preparing the audience for the spiritual journey (Bhava) of the upcoming song.",
+      activeInstrument: "Spoken Word",
+      tala: "No Meter — Spoken", talaBeats: [1,0,0,0,0,0,0,0], talaMode: "drone",
+      alert: null,
+    },
+    {
+      start: 2659, end: 2795,
+      type: "alapana", title: "Alapana & 'Created Time'",
+      description: "The unmetered exploration begins. Notice the heavy Gamakas (vocal bends) used to explore the emotional space. No strict Tala yet — just the continuous drone of the Ektara. This is 'created time' as discussed in class.",
+      activeInstrument: "Ektara & Voice (Free Flow)",
+      tala: "Free Flow — No Tala", talaBeats: [1,0,0,0,0,0,0,0], talaMode: "drone",
+      alert: "Alapana Begins",
+    },
+    {
+      start: 2795, end: 2848,
+      type: "pallavi", title: "First Refrain (Pallavi)",
+      description: "The Duggi drum kicks in, establishing the strict folk meter. She sings the foundational melodic line — the Pallavi. This is the 'sprouting' idea and the primary tonal anchor for the rest of the song.",
+      activeInstrument: "Duggi Drum & Ektara",
+      tala: "Folk Meter — Duggi Enters", talaBeats: [1,0,0,1,0,0,1,0], talaMode: "beat",
+      alert: "Meter Established",
+    },
+    {
+      start: 2848, end: 2885,
+      type: "charanam", title: "First Verse (Charanam Expansion)",
+      description: "She shifts into the first stanza. The rhythm (Laya) stays steady but the melody climbs higher up the scale to narrate the poetry — branching outward from the central Pallavi refrain.",
+      activeInstrument: "Voice (Melodic Expansion)",
+      tala: "Steady Laya — Melodic Climb", talaBeats: [1,0,1,0,1,0,1,0], talaMode: "beat",
+      alert: null,
+    },
+    {
+      start: 2885, end: 2915,
+      type: "loop", title: "Cyclical Return (Charanam → Pallavi)",
+      description: "Listen to her voice cascade back down the scale, landing squarely back on the central Pallavi refrain. This demonstrates the cyclical, circular architecture of time in Indian folk music — the heartbeat of the tradition.",
+      activeInstrument: "Full Ensemble",
+      tala: "Cyclical Return — Full Ensemble", talaBeats: [1,1,0,1,1,0,1,1], talaMode: "accent",
+      alert: "Cyclical Loop",
+    },
+  ]
+};
+
+// ── Progress bar colour per event type ────────────────────────────────────────
+const progressClass = {
+  intro:    '',
+  alapana:  'teal-lt',
+  pallavi:  '',        // amber default
+  charanam: 'saffron',
+  loop:     'gold',
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let player       = null;
+let currentEventIdx = -1;
+let currentEventRef = null;
+let talaInterval    = null;
+let talaBeat        = 0;
+let pollInterval    = null;
+let alertTimeout    = null;
+
+// ── YouTube API ───────────────────────────────────────────────────────────────
+const tag = document.createElement('script');
+tag.src = 'https://www.youtube.com/iframe_api';
+document.head.appendChild(tag);
+
+window.onYouTubeIframeAPIReady = function () { initPlayer(); };
+
+function initPlayer() {
+  player = new YT.Player('yt-player', {
+    videoId: baulData.videoId,
+    playerVars: { rel: 0, modestbranding: 1, showinfo: 0, enablejsapi: 1, origin: window.location.origin },
+    events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange }
+  });
+}
+
+function onPlayerReady() {
+  buildTimeline();
+  renderEvent(baulData.events[0], 0);
+}
+
+function onPlayerStateChange(e) {
+  const dot = document.getElementById('live-dot');
+  const lbl = document.getElementById('live-label');
+  if (e.data === YT.PlayerState.PLAYING) {
+    dot.classList.add('active'); lbl.textContent = 'LIVE';
+    startPolling();
+  } else {
+    dot.classList.remove('active'); lbl.textContent = 'PAUSED';
+    stopPolling();
+  }
+}
+
+// ── Polling ───────────────────────────────────────────────────────────────────
+function startPolling() { stopPolling(); pollInterval = setInterval(tick, 350); }
+function stopPolling()  { clearInterval(pollInterval); }
+
+function tick() {
+  if (!player || typeof player.getCurrentTime !== 'function') return;
+  const t = player.getCurrentTime();
+  const events = baulData.events;
+  let found = events.length - 1;
+  for (let i = 0; i < events.length; i++) {
+    if (t >= events[i].start && t < events[i].end) { found = i; break; }
+  }
+  if (found !== currentEventIdx) {
+    currentEventIdx = found;
+    renderEvent(events[found], found);
+    highlightTimeline(found);
+    if (events[found].alert) triggerAlert(events[found].alert);
+  }
+  // Update progress
+  if (currentEventRef) {
+    const ev = currentEventRef;
+    const elapsed = Math.max(0, t - ev.start);
+    const dur = ev.end - ev.start;
+    document.getElementById('progress-fill').style.width = Math.min(100, (elapsed/dur)*100) + '%';
+    document.getElementById('prog-elapsed').textContent = fmtTime(elapsed);
+    document.getElementById('prog-duration').textContent = fmtTime(dur);
+  }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderEvent(ev, idx) {
+  currentEventRef = ev;
+
+  // Card state
+  const card = document.getElementById('concept-card');
+  card.className = 'concept-card ' + ev.type + ' alert-flash';
+  setTimeout(() => card.classList.remove('alert-flash'), 700);
+
+  // Type tag
+  const tag = document.getElementById('concept-type-tag');
+  tag.className = 'concept-type-tag tag-' + ev.type;
+  tag.textContent = { intro:'Intro', alapana:'Alapana', pallavi:'Pallavi', charanam:'Charanam', loop:'Cyclical Loop' }[ev.type] || ev.type;
+
+  document.getElementById('concept-title').textContent = ev.title;
+  document.getElementById('concept-desc').textContent  = ev.description;
+
+  // Progress bar
+  const pf = document.getElementById('progress-fill');
+  pf.className = 'progress-fill' + (progressClass[ev.type] ? ' ' + progressClass[ev.type] : '');
+  pf.style.width = '0%';
+  document.getElementById('prog-elapsed').textContent  = '0:00';
+  document.getElementById('prog-duration').textContent = fmtTime(ev.end - ev.start);
+
+  // Alert pill
+  const pill = document.getElementById('alert-pill');
+  document.getElementById('alert-text').textContent = ev.alert || '';
+  pill.className = 'alert-pill' + (ev.alert ? ' visible' : '');
+
+  // Seek button
+  const seekBtn = document.getElementById('seek-start-btn');
+  seekBtn.style.display = 'inline-flex';
+  seekBtn.dataset.start = ev.start;
+
+  // Instrument badge
+  const ib = document.getElementById('instr-tag');
+  ib.textContent = ev.activeInstrument || '—';
+  ib.className = 'instr-tag active';
+
+  // Tala / drone strip
+  setupTala(ev.tala || baulData.droneDefault, ev.talaBeats || [1,0,0,0,1,0,0,0], ev.talaMode || 'beat');
+}
+
+// ── Alert ─────────────────────────────────────────────────────────────────────
+function triggerAlert(text) {
+  const el = document.getElementById('video-alert');
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(alertTimeout);
+  alertTimeout = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ── Tala Visualizer ───────────────────────────────────────────────────────────
+function setupTala(name, pattern, mode) {
+  document.getElementById('tala-name').textContent = name;
+  const container = document.getElementById('tala-dots');
+  container.innerHTML = '';
+
+  pattern.forEach(b => {
+    const d = document.createElement('div');
+    d.className = 'tala-dot';
+    d.dataset.val  = b;
+    d.dataset.mode = mode;
+    container.appendChild(d);
+  });
+
+  clearInterval(talaInterval);
+  talaBeat = 0;
+  const dots = Array.from(container.querySelectorAll('.tala-dot'));
+
+  // Drone mode: all dots pulse slowly (no advancing beat)
+  if (mode === 'drone') {
+    dots.forEach(d => d.className = 'tala-dot drone');
+    return;
+  }
+
+  const bpm = mode === 'accent' ? 340 : 420;
+  talaInterval = setInterval(() => {
+    dots.forEach(d => d.className = 'tala-dot');
+    if (dots[talaBeat]) {
+      const isAccent = dots[talaBeat].dataset.val === '1';
+      dots[talaBeat].className = 'tala-dot ' + (mode === 'accent' && isAccent ? 'accent' : isAccent ? 'beat' : '');
+    }
+    talaBeat = (talaBeat + 1) % dots.length;
+  }, bpm);
+}
+
+// ── Timeline ──────────────────────────────────────────────────────────────────
+function buildTimeline() {
+  const list = document.getElementById('timeline-list');
+  list.innerHTML = '';
+  document.getElementById('tl-count').textContent = baulData.events.length + ' events';
+
+  const typeColors = {
+    intro: '#6A8870', alapana: '#3AADA0', pallavi: '#F0A832',
+    charanam: '#E87820', loop: '#F0C060',
+  };
+
+  baulData.events.forEach((ev, i) => {
+    const col = typeColors[ev.type] || '#A08060';
+    const item = document.createElement('div');
+    item.className = 'tl-item';
+    item.id = 'tl-' + i;
+    item.title = `Jump to ${fmtTimeFull(ev.start)} — ${ev.title}`;
+    
+    // Cleaned up onClick handler
+    item.onclick = () => seekTo(ev.start, item);
+    
+    item.innerHTML = `
+      <div class="tl-time-wrap">
+        <div class="tl-time">${fmtTimeFull(ev.start)}</div>
+        <div class="tl-play-icon">&#9654;</div>
+      </div>
+      <div class="tl-dot"></div>
+      <div class="tl-content">
+        <div class="tl-title">${ev.title}</div>
+        <div class="tl-sub">${ev.activeInstrument}</div>
+      </div>
+      <div class="tl-type-badge" style="background:${col}22;color:${col};border:1px solid ${col}55">
+        ${ev.type.slice(0,5).toUpperCase()}
+      </div>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function highlightTimeline(idx) {
+  document.querySelectorAll('.tl-item').forEach((el, i) => el.classList.toggle('active', i === idx));
+  const active = document.getElementById('tl-' + idx);
+  if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+function seekTo(t, itemEl) {
+  // Visual flash on the clicked row
+  if (itemEl) {
+    itemEl.classList.remove('seek-flash');
+    void itemEl.offsetWidth; // reflow to restart animation
+    itemEl.classList.add('seek-flash');
+    setTimeout(() => itemEl.classList.remove('seek-flash'), 600);
+  }
+
+  // Streamlined seek logic matching Villu Paatu
+  if (player && typeof player.seekTo === 'function') {
+    player.seekTo(t, true);
+    player.playVideo();
+  }
+}
+
+function seekToEvent() {
+  seekTo(parseFloat(document.getElementById('seek-start-btn').dataset.start || 0), null);
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function fmtTime(sec) {
+  const s = Math.floor(sec), m = Math.floor(s/60), ss = s%60;
+  return `${m}:${String(ss).padStart(2,'0')}`;
+}
+function fmtTimeFull(sec) {
+  const s = Math.floor(sec);
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss = s%60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+  return `${m}:${String(ss).padStart(2,'0')}`;
+}
+
+// ── Init Fallback ─────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  // Set up the idle state visually while waiting for playback
+  setupTala('Ektara Drone', [1,0,0,0,0,0,0,0], 'drone');
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heritage at Risk | Folk Music Endangered Status Dashboard</title>
+  <meta name="description" content="Interactive heritage health monitor for Baul, Kinnera and Villu Pattu — endangered Indian folk music traditions.">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    :root {
+      --c: #5AACF0; /* active tradition colour — overridden per tab */
+      --cd: #1E6AAA;
+      --bg: #04060F;
+    }
+    body {
+      background: var(--bg);
+      color: #D0D8E8;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── BG GLOW ── */
+    .bg-glow {
+      position: fixed; inset:0; z-index:0; pointer-events:none;
+      background:
+        radial-gradient(ellipse 60% 40% at 15% 5%, rgba(var(--gr),0.07) 0%, transparent 65%),
+        radial-gradient(ellipse 50% 35% at 85% 85%, rgba(var(--gr),0.04) 0%, transparent 65%);
+      transition: background 0.8s;
+    }
+
+    /* ── STICKY HEADER ── */
+    #hdr {
+      position: sticky; top:0; z-index: 100;
+      background: rgba(4,6,15,.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      padding: 0 48px;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px;
+    }
+    .hdr-left { display:flex; align-items:center; gap:14px; }
+    .hdr-dot-wrap { display:flex; align-items:center; gap:6px; }
+    .pulse-dot { width:8px; height:8px; border-radius:50%; background:#E05050; animation: pulse 1.5s ease infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.45;transform:scale(.65);} }
+    .hdr-live { font-size:.6rem; letter-spacing:.14em; color:#E05050; font-weight:600; }
+    h1 { font-family:'Cinzel',serif; font-size:1.05rem; color:#E8E0F0; letter-spacing:.06em; }
+
+    /* ── TABS ── */
+    #tabs {
+      display:flex; gap:8px; padding: 18px 48px; flex-wrap:wrap;
+      position: sticky; top:64px; z-index:90;
+      background: rgba(4,6,15,.88); backdrop-filter:blur(12px);
+      border-bottom:1px solid rgba(255,255,255,.04);
+    }
+    .tab {
+      padding: 8px 20px; border-radius:30px; cursor:pointer;
+      font-size:.78rem; font-weight:500; border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.03); color:rgba(200,210,230,.45);
+      transition: all .22s; letter-spacing:.04em; user-select:none;
+    }
+    .tab:hover { border-color:rgba(255,255,255,.18); color:rgba(220,230,250,.7); }
+    .tab.active { color:#fff; border-color:var(--c); background: rgba(255,255,255,.05);
+      box-shadow: 0 0 16px rgba(var(--gr),.18); }
+
+    /* ── PAGE CONTENT ── */
+    #view { position:relative; z-index:1; padding:40px 48px 80px; max-width:1400px; margin:0 auto; }
+
+    /* ── FADE TRANSITION ── */
+    .view-enter { animation: viewIn .45s ease both; }
+    @keyframes viewIn { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:none;} }
+
+    /* ── SECTION TITLE ── */
+    .sec-title {
+      font-size:.6rem; letter-spacing:.16em; color:rgba(160,170,200,.4);
+      text-transform:uppercase; margin-bottom:16px; display:flex; align-items:center; gap:10px;
+    }
+    .sec-title::after { content:''; flex:1; height:1px; background:rgba(255,255,255,.05); }
+
+    /* ── SCROLL REVEAL ── */
+    .reveal { opacity:0; transform:translateY(20px); transition: opacity .55s ease, transform .55s ease; }
+    .reveal.left  { transform:translateX(-30px); }
+    .reveal.right { transform:translateX(30px); }
+    .reveal.scale { transform:scale(.92); }
+    .reveal.done  { opacity:1 !important; transform:none !important; }
+
+    /* ── HERO BANNER (single tradition) ── */
+    .hero-banner {
+      border-radius:20px; padding:40px 36px;
+      border:1px solid rgba(255,255,255,.08);
+      background: linear-gradient(135deg, rgba(var(--gr),.12) 0%, rgba(var(--gr),.03) 100%);
+      display:flex; align-items:flex-start; gap:32px; margin-bottom:32px;
+      position:relative; overflow:hidden;
+    }
+    .hero-banner::before {
+      content:''; position:absolute; top:-40px; right:-40px; width:240px; height:240px;
+      border-radius:50%; background:radial-gradient(circle, rgba(var(--gr),.15) 0%, transparent 70%);
+    }
+    .hb-icon { font-size:5rem; line-height:1; flex-shrink:0; filter:drop-shadow(0 0 20px rgba(var(--gr),.5)); }
+    .hb-info { flex:1; }
+    .hb-name { font-family:'Cinzel',serif; font-size:2.4rem; color:var(--c); letter-spacing:.04em; margin-bottom:4px; }
+    .hb-script { font-size:1.1rem; color:rgba(var(--gr),.55); margin-bottom:8px; }
+    .hb-region { font-size:.78rem; color:rgba(180,190,210,.55); margin-bottom:16px; letter-spacing:.06em; }
+    .hb-badges { display:flex; gap:8px; flex-wrap:wrap; }
+    .hb-right { text-align:right; flex-shrink:0; }
+    .risk-big-label { font-size:.6rem; letter-spacing:.12em; color:rgba(160,170,200,.4); margin-bottom:4px; }
+    .risk-big-val { font-family:'JetBrains Mono',monospace; font-size:3.5rem; font-weight:600; color:var(--c); line-height:1; }
+    .risk-big-sub { font-size:.68rem; color:rgba(160,170,200,.4); margin-top:4px; }
+
+    /* ── METRICS GRID ── */
+    .metrics-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:32px; }
+    .metric {
+      background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07);
+      border-radius:14px; padding:22px 18px; text-align:center; position:relative; overflow:hidden;
+    }
+    .metric::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:var(--c); opacity:.35; }
+    .metric-val { font-family:'JetBrains Mono',monospace; font-size:1.55rem; font-weight:600; color:var(--c); margin-bottom:5px; }
+    .metric-lbl { font-size:.6rem; color:rgba(160,170,200,.5); letter-spacing:.1em; text-transform:uppercase; }
+    .metric-sub { font-size:.64rem; color:rgba(120,130,160,.45); margin-top:4px; line-height:1.5; }
+
+    /* ── HEALTH BARS ── */
+    .health-panel { background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.06); border-radius:14px; padding:22px 20px; margin-bottom:32px; }
+    .hbar-row { margin-bottom:14px; }
+    .hbar-row:last-child { margin-bottom:0; }
+    .hbar-head { display:flex; justify-content:space-between; font-size:.7rem; color:rgba(180,190,210,.6); margin-bottom:6px; }
+    .hbar-track { height:7px; border-radius:4px; background:rgba(255,255,255,.07); overflow:hidden; }
+    .hbar-fill { height:100%; border-radius:4px; background:var(--c); width:0; transition:width 1.4s cubic-bezier(.22,.68,0,1.2); }
+
+    /* ── QUOTE CARD ── */
+    .quote-card {
+      border-left:3px solid var(--c); padding:18px 22px; margin-bottom:32px;
+      background:rgba(255,255,255,.025); border-radius:0 12px 12px 0;
+    }
+    .quote-text { font-size:.88rem; line-height:1.75; color:rgba(200,210,230,.75); font-style:italic; margin-bottom:8px; }
+    .quote-attr { font-size:.7rem; color:rgba(var(--gr),.55); letter-spacing:.06em; }
+
+    /* ── THREATS ── */
+    .threats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:32px; }
+    .threat-card {
+      background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.06);
+      border-radius:14px; padding:20px 18px;
+    }
+    .threat-icon { font-size:1.6rem; margin-bottom:10px; }
+    .threat-name { font-size:.82rem; font-weight:600; color:#E8E0F0; margin-bottom:6px; }
+    .threat-desc { font-size:.73rem; line-height:1.6; color:rgba(180,190,210,.6); }
+    .sev-bar { margin-top:12px; height:3px; border-radius:2px; background:rgba(255,255,255,.07); overflow:hidden; }
+    .sev-fill { height:100%; border-radius:2px; background:linear-gradient(90deg, var(--cd), var(--c)); width:0; transition:width 1.4s cubic-bezier(.22,.68,0,1.2); }
+
+    /* ── TIMELINE ── */
+    .timeline-wrap { position:relative; padding:20px 0; margin-bottom:32px; }
+    .tl-spine {
+      position:absolute; left:50%; top:0; transform:translateX(-50%);
+      width:2px; background:linear-gradient(to bottom, var(--c), rgba(var(--gr),.1));
+      height:0; transition:height 2.5s ease; z-index:0;
+    }
+    .tl-spine.grow { height:100%; }
+    .tl-event {
+      display:flex; align-items:flex-start; margin-bottom:52px; position:relative;
+      gap:0;
+    }
+    /* dot in center */
+    .tl-center { width:60px; flex-shrink:0; display:flex; align-items:flex-start; justify-content:center; padding-top:14px; position:relative; z-index:1; }
+    .tl-dot {
+      width:16px; height:16px; border-radius:50%; border:3px solid var(--c);
+      background:var(--bg); flex-shrink:0;
+      opacity:0; transform:scale(0);
+      transition: opacity .4s ease, transform .4s cubic-bezier(.34,1.56,.64,1);
+    }
+    .tl-dot.pop { opacity:1; transform:scale(1); }
+    /* cards */
+    .tl-card {
+      width:calc(50% - 30px); padding:18px 20px;
+      background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.06);
+      border-radius:14px; opacity:0; transition: opacity .55s ease, transform .55s ease;
+    }
+    .tl-card.from-right { transform:translateX(36px); }
+    .tl-card.from-left  { transform:translateX(-36px); }
+    .tl-card.revealed   { opacity:1; transform:none; }
+    .tl-spacer { width:calc(50% - 30px); }
+    .tl-event.left  .tl-card { order:-1; text-align:right; }
+    .tl-event.left  .tl-spacer { order:1; }
+    .tl-event.right .tl-card { order:1; text-align:left; }
+    .tl-event.right .tl-spacer { order:-1; }
+    .tl-yr { font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--c); margin-bottom:5px; font-weight:500; }
+    .tl-text { font-size:.77rem; line-height:1.65; color:rgba(200,210,230,.75); }
+    .tl-chip {
+      display:inline-block; font-size:.58rem; padding:2px 8px; border-radius:8px;
+      font-weight:700; border:1px solid; margin-top:7px; letter-spacing:.07em;
+    }
+    .chip-milestone { color:#40C070; border-color:rgba(60,180,100,.35); background:rgba(60,180,100,.08); }
+    .chip-threat    { color:#E07050; border-color:rgba(220,100,60,.35); background:rgba(220,100,60,.08); }
+    .chip-crisis    { color:#E04040; border-color:rgba(220,50,50,.35); background:rgba(220,50,50,.1); }
+    .chip-positive  { color:#50A0E0; border-color:rgba(60,150,220,.35); background:rgba(60,150,220,.08); }
+    .chip-present   { color:#D0A030; border-color:rgba(200,160,40,.35); background:rgba(200,160,40,.08); }
+
+    /* ── EFFORTS ── */
+    .efforts-list { list-style:none; }
+    .effort-item {
+      padding:14px 18px; border-radius:12px; margin-bottom:10px;
+      background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.05);
+      display:flex; align-items:flex-start; gap:12px;
+    }
+    .effort-icon { font-size:1.1rem; flex-shrink:0; margin-top:1px; }
+    .effort-text { font-size:.76rem; line-height:1.6; color:rgba(190,200,220,.75); }
+
+    /* ── KEY FIGURE ── */
+    .figure-card {
+      background:rgba(255,255,255,.025); border:1px solid rgba(var(--gr),.18);
+      border-radius:14px; padding:20px 22px; margin-bottom:32px;
+      display:flex; align-items:center; gap:16px;
+    }
+    .figure-icon { font-size:2.4rem; flex-shrink:0; }
+    .figure-name { font-size:.9rem; font-weight:600; color:var(--c); margin-bottom:3px; }
+    .figure-sub  { font-size:.72rem; color:rgba(180,190,210,.5); }
+
+    /* ── ALL-VIEW HERO CARDS ── */
+    .all-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-bottom:32px; }
+    .av-card {
+      border-radius:16px; padding:24px 20px; border:1px solid rgba(255,255,255,.07);
+      position:relative; overflow:hidden; cursor:pointer;
+      transition: transform .2s, border-color .2s, box-shadow .2s;
+    }
+    .av-card:hover { transform:translateY(-3px); border-color:rgba(255,255,255,.15); box-shadow:0 12px 40px rgba(0,0,0,.35); }
+    .av-card::before { content:''; position:absolute; inset:0; opacity:.08; pointer-events:none;
+      background:radial-gradient(circle at 80% 0%, var(--c) 0%, transparent 60%); }
+    .av-flag { font-size:2rem; margin-bottom:10px; }
+    .av-name { font-family:'Cinzel',serif; font-size:1.1rem; margin-bottom:3px; color:var(--c); }
+    .av-loc  { font-size:.68rem; color:rgba(180,190,210,.45); margin-bottom:14px; letter-spacing:.07em; }
+    .av-bar-wrap { margin-bottom:9px; }
+    .av-bar-head { display:flex; justify-content:space-between; font-size:.64rem; color:rgba(160,170,200,.5); margin-bottom:4px; }
+    .av-bar { height:5px; border-radius:3px; background:rgba(255,255,255,.07); overflow:hidden; }
+    .av-fill { height:100%; border-radius:3px; width:0; transition:width 1.4s cubic-bezier(.22,.68,0,1.2); }
+    .av-hint { margin-top:14px; font-size:.64rem; color:rgba(var(--gr),.4); letter-spacing:.06em; }
+
+    /* ── BADGE STYLES ── */
+    .badge {
+      display:inline-block; font-size:.6rem; padding:2px 9px; border-radius:10px;
+      font-weight:600; letter-spacing:.07em; border:1px solid;
+    }
+    .badge-green  { color:#40C070; border-color:rgba(60,180,100,.3); background:rgba(60,180,100,.08); }
+    .badge-yellow { color:#D0A030; border-color:rgba(200,160,40,.3); background:rgba(200,160,40,.08); }
+    .badge-red    { color:#E05060; border-color:rgba(220,60,80,.3); background:rgba(220,60,80,.08); }
+    .badge-blue   { color:#50A0E0; border-color:rgba(60,150,220,.3); background:rgba(60,150,220,.08); }
+
+    /* ── GAUGE ARC ── */
+    .gauge-wrap { display:flex; align-items:center; gap:24px; padding:20px 22px;
+      background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.06); border-radius:14px; margin-bottom:32px; }
+    .gauge-svg  { flex-shrink:0; }
+    .gauge-info .gi-label { font-size:.6rem; letter-spacing:.12em; color:rgba(160,170,200,.4); text-transform:uppercase; margin-bottom:4px; }
+    .gauge-info .gi-val   { font-family:'JetBrains Mono',monospace; font-size:2rem; font-weight:600; color:var(--c); }
+    .gauge-info .gi-sub   { font-size:.72rem; color:rgba(160,170,200,.5); margin-top:3px; }
+    .gauge-info .gi-desc  { font-size:.72rem; line-height:1.6; color:rgba(180,190,210,.6); margin-top:10px; max-width:400px; }
+
+    /* ── SOURCE NOTE ── */
+    .source-note { margin-top:36px; padding:14px 18px; border-radius:10px;
+      background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.05);
+      font-size:.65rem; color:rgba(120,130,160,.4); line-height:1.75; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width:900px) {
+      #hdr, #tabs, #view { padding-left:20px; padding-right:20px; }
+      .all-cards, .metrics-grid, .threats-grid { grid-template-columns:1fr; }
+      .tl-event { flex-direction:column; }
+      .tl-center { width:100%; }
+      .tl-spine  { left:8px; }
+      .tl-card, .tl-spacer { width:100%; }
+    }
+  </style>
+</head>
+<body>
+<!-- INJECTED BACK NAVIGATION -->
+<div id="exhib-back-btn" style="position:fixed; top:20px; left:20px; z-index:999999;">
+<a href="index.html" style="background:rgba(15,10,25,0.75); border:1px solid rgba(232,161,0,0.3); color:#F5ECD7; text-decoration:none; padding:8px 16px; border-radius:100px; font-family:sans-serif; font-size:0.85rem; font-weight:500; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); display:flex; align-items:center; gap:8px; box-shadow:0 4px 20px rgba(0,0,0,0.5); transition:all 0.3s ease; text-transform:uppercase; letter-spacing:0.1em;" onmouseover="this.style.background='rgba(232,161,0,0.25)'; this.style.borderColor='#E8A100';" onmouseout="this.style.background='rgba(15,10,25,0.75)'; this.style.borderColor='rgba(232,161,0,0.3)';">
+   <span style="font-size:1.2em; margin-top:-2px;">&#10229;</span> Exhibition Hub
+</a>
+</div>
+
+
+<div class="bg-glow" id="bgGlow"></div>
+
+<!-- Sticky Header -->
+<div id="hdr">
+  <div class="hdr-left">
+    <div class="hdr-dot-wrap"><div class="pulse-dot"></div><span class="hdr-live">LIVE MONITOR</span></div>
+    <h1>Heritage at Risk — Folk Music Endangered Status Dashboard</h1>
+  </div>
+  <div style="font-size:.65rem;color:rgba(160,170,200,.35);letter-spacing:.08em">Data: 2024–25 · 3 Traditions</div>
+</div>
+
+<!-- Tabs -->
+<div id="tabs">
+  <div class="tab active" data-t="all"     onclick="setTab('all')">🌐 All Traditions</div>
+  <div class="tab"        data-t="baul"    onclick="setTab('baul')">🎵 Baul (Bengal)</div>
+  <div class="tab"        data-t="kinnera" onclick="setTab('kinnera')">🪕 Kinnera (Telangana)</div>
+  <div class="tab"        data-t="villu"   onclick="setTab('villu')">🏹 Villu Pattu (Tamil Nadu)</div>
+</div>
+
+<!-- Dynamic View -->
+<div id="view"></div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   DATA
+════════════════════════════════════════════════════ */
+const TRADITIONS = {
+  baul: {
+    id:'baul', icon:'🎵', name:'Baul', script:'বাউল সংগীত',
+    region:'West Bengal, India & Bangladesh', language:'Bengali',
+    color:'#5AACF0', colorDark:'#1E6AAA', gr:'60,150,220',
+    riskScore:42, riskLabel:'MODERATE RISK',
+    age:'~1,000 BCE', practitioners:'10,000–100,000',
+    practNote:'(ascetic + family-dwelling, both countries)',
+    unescoStatus:'✓ Inscribed 2008', unescoCls:'badge-blue',
+    badges:[{t:'UNESCO 2008',c:'badge-blue'},{t:'⚠ Socially Threatened',c:'badge-yellow'},{t:'✓ Active Festivals',c:'badge-green'}],
+    bars:[
+      {label:'Practitioners Remaining',val:62,valTxt:'~50k+'},
+      {label:'Knowledge Transmission Health',val:45,valTxt:'Moderate'},
+      {label:'Institutional Support',val:72,valTxt:'Strong'},
+    ],
+    metrics:[
+      {val:'~50k+',  label:'ESTIMATED PRACTITIONERS', sub:'West Bengal + Bangladesh combined estimate'},
+      {val:'2005',   label:'UNESCO PROCLAMATION YEAR', sub:'First South Asian folk music proclaimed Masterpiece of Oral Heritage'},
+      {val:'2008',   label:'UNESCO INSCRIPTION YEAR',  sub:'Inscribed on Representative List of Intangible Cultural Heritage'},
+      {val:'42/100', label:'RISK SCORE (LOWER = SAFER)',sub:'Moderate risk — social threats & commercialisation pressure'},
+    ],
+    gaugeDesc:'Baul has the strongest protection of the three traditions studied here — UNESCO recognition (2008) provides global funding and scholarly attention. However, economic hardship, rural impoverishment, and documented physical attacks on Baul performers in Bangladesh (2024) keep the risk meaningful.',
+    threats:[
+      {icon:'🏛',name:'Religious Suppression',desc:'Bangladesh 2024 political transitions triggered documented attacks on Baul singers — violence, legal harassment under "blasphemy" laws, and disruption of cultural gatherings by extremist groups.',sev:78},
+      {icon:'💰',name:'Economic Hardship',desc:'Most practitioners live in poverty. Rural impoverishment forces many to seek alternate livelihoods or commercialise their art for urban festival audiences — diluting its spiritual authenticity.',sev:72},
+      {icon:'🎭',name:'Commercialisation Pressure',desc:'Global "world music" demand creates pressure to adapt Baul music for commercial stages. Authentic guru-shishya transmission suffers when the priority shifts to performance revenue.',sev:60},
+    ],
+    timeline:[
+      {yr:'2005',text:'UNESCO proclaims Baul songs a <strong>Masterpiece of the Oral and Intangible Heritage of Humanity</strong> — first such recognition for the tradition.',type:'milestone'},
+      {yr:'2008',text:'Baul tradition officially <strong>inscribed on UNESCO Representative List</strong> of ICH. First of our three traditions to receive global heritage protection.',type:'milestone'},
+      {yr:'2020',text:'COVID-19 devastates Baul performers. Village fairs cancelled nationwide; income falls to zero. Many singers forced into agricultural labour for survival.',type:'threat'},
+      {yr:'2024 Jan',text:'Political transitions in Bangladesh trigger <strong>escalating targeted violence against Baul performers</strong> — attacks, legal harassment, and restriction of cultural gatherings. Artists at Risk Connection issues alert.',type:'crisis'},
+      {yr:'2025',text:'Despite threats, Baul remains the strongest of the three traditions studied. UNESCO recognition, active festival networks, and global academic interest provide continued protection.',type:'present'},
+    ],
+    efforts:[
+      {icon:'🌐',text:'UNESCO ICH Programme — Inscribed 2008, enabling international documentation funding and global scholarly attention.'},
+      {icon:'🌸',text:'Shantiniketan Baul Festival (Annual) — Largest gathering of Baul singers globally, near Rabindranath Tagore\'s ashram.'},
+      {icon:'🎓',text:'Rabindra Bharati University, Kolkata — Formal academic programs in Baul music alongside the guru-shishya oral tradition.'},
+      {icon:'💰',text:'Sangeet Natak Akademi — Guru Shishya Parampara Scheme provides government stipends to master-disciple pairs.'},
+    ],
+    quote:'"The baul is a mad person. He doesn\'t follow any rules, religion or caste. He only knows one rule — Love."',
+    quoteBy:'— Purna Das Baul, Legendary Baul Performer',
+    keyFigure:'Purna Das Baul · Paban Das Baul · Mimlu Sen',
+  },
+  kinnera: {
+    id:'kinnera', icon:'🪕', name:'Kinnera Katha', script:'కిన్నెర కథ',
+    region:'Nallamala Forest, Telangana, India', language:'Telugu',
+    color:'#F07050', colorDark:'#DC5A1E', gr:'220,100,60',
+    riskScore:91, riskLabel:'CRITICAL RISK',
+    age:'~2,000 BCE', practitioners:'~5–10',
+    practNote:'(12-step master players remaining, 2024–25)',
+    unescoStatus:'✗ Not Listed', unescoCls:'badge-red',
+    badges:[{t:'🔴 Critically Endangered',c:'badge-red'},{t:'Padma Shri 2022',c:'badge-yellow'},{t:'Last Master: Dec 2024',c:'badge-red'}],
+    bars:[
+      {label:'Master Practitioners Remaining',val:8, valTxt:'~5–10'},
+      {label:'Knowledge Transmission Health',val:9, valTxt:'Critical'},
+      {label:'Institutional Support',val:35,valTxt:'Developing'},
+    ],
+    metrics:[
+      {val:'~5–10',   label:'MASTER PLAYERS REMAINING',   sub:'Traditional 12-step Kinnera as of 2024–25'},
+      {val:'2022',    label:'PADMA SHRI AWARDED',          sub:'Darshanam Mogilaiah — 4th highest civilian honour, India'},
+      {val:'Dec 2024',label:'LAST MASTER PASSED AWAY',     sub:'Darshanam Mogilaiah (73) — 12-step technique may be extinct'},
+      {val:'91/100',  label:'RISK SCORE (HIGHER = DANGER)',sub:'Critically endangered — highest risk of the three traditions'},
+    ],
+    gaugeDesc:'Kinnera is the most critically endangered tradition studied here. The 12-step Kinnera technique — developed and embodied solely by Darshanam Mogilaiah — may now be functionally extinct following his death on December 19, 2024. No trained successors of the full technique have been identified. Emergency documentation is the only hope.',
+    threats:[
+      {icon:'👴',name:'Loss of Last Master',desc:'Darshanam Mogilaiah — the only known practitioner of the 12-step Kinnera — passed away December 19, 2024. He stated he had no successors. The specific technique may be irreversibly lost.',sev:98},
+      {icon:'📵',name:'Broken Transmission Chain',desc:'Transmitted through the Dakkali tribal family lineage for generations. Economic hardship forced younger generations to abandon the art for daily wage labour. No institutional pipeline existed before 2022.',sev:92},
+      {icon:'🌲',name:'Resource Depletion',desc:'The instrument requires specific bamboo, dried bottle gourds, and animal sinew — materials increasingly scarce as Nallamala forests shrink from deforestation and encroachment.',sev:65},
+    ],
+    timeline:[
+      {yr:'~2000 BCE',text:'Kinnera traced to <strong>Dakkali, Chenchu, and Madiga tribes</strong> of the Deccan Plateau. Mentioned in Telugu Sangam poetry as a sacred storytelling instrument.',type:'milestone'},
+      {yr:'1990s',text:'Darshanam Mogilaiah develops the <strong>12-step (12-fret) Kinnera</strong> — expanding the instrument\'s melodic range far beyond the traditional 3-string version. He becomes its sole master.',type:'milestone'},
+      {yr:'2019',text:'Mogilaiah performs at a national festival and publicly states he is the <strong>"last person"</strong> who knows the 12-step technique. No successors identified.',type:'threat'},
+      {yr:'2022 Jan',text:'Government of India awards Mogilaiah the <strong>Padma Shri</strong> for lifetime contribution to Kinnera Katha preservation. National media covers the story.',type:'milestone'},
+      {yr:'2022 Mar',text:'Film <em>Bheemla Nayak</em> features Kinnera in its soundtrack — Mogilaiah\'s performance viewed by millions. YouTube clips go viral across Telugu-speaking communities.',type:'positive'},
+      {yr:'2024',text:'Telangana integrates Kinnera into state school curriculum. Artist pension schemes expanded. But no formal training pipeline for new players established.',type:'positive'},
+      {yr:'2024 Dec 19',text:'<strong>Darshanam Mogilaiah passes away at 73.</strong> Cultural organisations issue emergency statements. The 12-step Kinnera loses its last undisputed master.',type:'crisis'},
+      {yr:'2025',text:'Scholars call for an <strong>emergency state-funded Kinnera Archive</strong>. A handful of basic-level players remain, but none has mastered the full 12-step technique.',type:'present'},
+    ],
+    efforts:[
+      {icon:'🏆',text:'Padma Shri 2022 (Mogilaiah) — National recognition brought Kinnera to mainstream consciousness through major TV appearances and cultural festivals.'},
+      {icon:'🎬',text:'Bheemla Nayak (2022) — Kinnera featured in film soundtrack performed by Mogilaiah, introducing the instrument to millions of Telugu film viewers.'},
+      {icon:'📚',text:'Telangana State Curriculum — Government added Kinnera Katha history to school textbooks, ensuring a generation of students learns about this heritage.'},
+      {icon:'⚠',text:'URGENT — Emergency Documentation Drive (2025): Scholars call for immediate state-funded archiving of remaining knowledge-holders. Most time-critical need of the three traditions.'},
+    ],
+    quote:'"I don\'t know who will play this after me. I searched but found no one."',
+    quoteBy:'— Darshanam Mogilaiah, Padma Shri (1951 – December 19, 2024)',
+    keyFigure:'Darshanam Mogilaiah (Padma Shri) · 1951 – December 19, 2024',
+  },
+  villu: {
+    id:'villu', icon:'🏹', name:'Villu Pattu', script:'வில்லுப்பாட்டு',
+    region:'Southern Tamil Nadu, India', language:'Tamil',
+    color:'#C070F0', colorDark:'#A03CDC', gr:'160,80,220',
+    riskScore:68, riskLabel:'HIGH RISK',
+    age:'~2,000 BCE', practitioners:'~600–800 performers',
+    practNote:'(~120 active troupes, 2023–24 estimate)',
+    unescoStatus:'✗ Not Listed', unescoCls:'badge-red',
+    badges:[{t:'⚠ Endangered',c:'badge-yellow'},{t:'State-Level Support',c:'badge-yellow'},{t:'✓ Diploma 2024',c:'badge-green'}],
+    bars:[
+      {label:'Active Troupes (vs. 1970s peak)',val:28,valTxt:'~120 troupes'},
+      {label:'Knowledge Transmission Health', val:25,valTxt:'Low'},
+      {label:'Institutional Support',          val:40,valTxt:'Growing'},
+    ],
+    metrics:[
+      {val:'~120',   label:'ACTIVE TROUPES',            sub:'Southern Tamil Nadu — Kanniyakumari, Thoothukudi, Tirunelveli (2023–24)'},
+      {val:'~2,000', label:'YEARS OF DOCUMENTED HISTORY',sub:'Referenced in Tamil Sangam literature (2nd century CE)'},
+      {val:'2024',   label:'UNIVERSITY DIPLOMA LAUNCHED',sub:'TN Dr. Jayalalithaa Music Univ. — first formal training program'},
+      {val:'68/100', label:'RISK SCORE (LOWER = SAFER)', sub:'High risk — declining artist count, no UNESCO recognition'},
+    ],
+    gaugeDesc:'Villu Pattu occupies the middle ground — more practitioners than Kinnera but without UNESCO protection and facing steady economic decline. The 2024 university diploma course is a significant positive step, but the art requires a broader audience revival to become economically sustainable for new performers.',
+    threats:[
+      {icon:'📱',name:'Modern Entertainment Competition',desc:'Cinema, TV, and smartphones have displaced 6–8 hour folk performances from village festivals. Audiences that once gathered all night for Villu Pattu now prefer shorter digital content.',sev:85},
+      {icon:'💰',name:'Economic Non-Viability',desc:'A troupe of 5–7 performers earns very little per performance. Costume, travel, and rehearsal costs often exceed income. Many families that practiced for generations have abandoned the art for stable employment.',sev:80},
+      {icon:'👥',name:'Shrinking Audience Base',desc:'The traditional audience — rural communities in southern Tamil Nadu — is increasingly urbanising. Temple festival committees face budget cuts, reducing patronage. Without audiences, no economic incentive exists for new learners.',sev:72},
+    ],
+    timeline:[
+      {yr:'~200 CE',text:'Villu Pattu referenced in <strong>Tamil Sangam literature</strong> as "Villisai". Performed at royal courts and village deity festivals — a tradition combining music, poetry, and storytelling.',type:'milestone'},
+      {yr:'15–18th c.',text:'Flourishes under <strong>Nayaka kingdom patronage</strong>. Stories from Mahabharata, Ramayana, and local folk heroes performed across entire nights at temple festivals.',type:'milestone'},
+      {yr:'1947–1980',text:'Post-independence government cultural programmes support Villu Pattu through Sangeet Natak Akademi awards and regional cultural centres. Kalaimamani awards honour prominent artists.',type:'positive'},
+      {yr:'1990s–2000s',text:'Cable television and home video arrive in rural Tamil Nadu. Village performance bookings begin declining sharply. Artists find it increasingly difficult to sustain livelihoods.',type:'threat'},
+      {yr:'2016',text:'Regional surveys document approximately <strong>150 active troupes</strong> — a decline from earlier decades. Artist welfare concerns prompt state-level discussions on preservation funding.',type:'threat'},
+      {yr:'2023',text:'Tamil Nadu government announces formal <strong>diploma courses in Villu Pattu</strong> through the Dr. Jayalalithaa Music University — the first institutionalised training pathway for the art.',type:'positive'},
+      {yr:'2024',text:'~120 troupes remain active. Bharathi Thirumagan continues to perform internationally. Scholars push for UNESCO nomination to gain global protection and funding.',type:'present'},
+    ],
+    efforts:[
+      {icon:'🎓',text:'TN Dr. Jayalalithaa Music University Diploma (2024) — First formal institutional training program, attempting to institutionalize oral transmission.'},
+      {icon:'🏛',text:'South Zone Cultural Centre, Thanjavur — Active in documenting and providing performance platforms for troupes across Tamil Nadu and Kerala.'},
+      {icon:'💰',text:'Sangeet Natak Akademi Guru Shishya Scheme — Government stipends to master-disciple pairs, supporting knowledge transmission.'},
+      {icon:'⭐',text:'Bharathi Thirumagan — Internationally recognized performer, daughter of Kalaimamani Subbu Arumugam. Keeps the art visible on global stages.'},
+    ],
+    quote:'"When we perform Villu Pattu, the bow is not just an instrument — it becomes the sword of the hero, the river goddess speaks through it."',
+    quoteBy:'— Bharathi Thirumagan, Villu Pattu Performer',
+    keyFigure:'Bharathi Thirumagan · Kalaimamani Subbu Arumugam (legacy)',
+  },
+};
+
+/* ════════════════════════════════════════════════════
+   GAUGE SVG HELPER
+════════════════════════════════════════════════════ */
+const ARC = 188.5;
+function gaugeArc(score, color, id){
+  return `<svg class="gauge-svg" viewBox="0 0 140 80" width="160" height="92">
+    <path d="M10,75 A60,60 0 0,1 130,75" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="14" stroke-linecap="round"/>
+    <path d="M10,75 A60,60 0 0,1 130,75" fill="none" stroke="${color}" stroke-width="14" stroke-linecap="round"
+          stroke-dasharray="${ARC}" stroke-dashoffset="${ARC}" id="${id}"
+          style="transition:stroke-dashoffset 1.8s cubic-bezier(.22,.68,0,1.2)"/>
+  </svg>`;
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER HELPERS
+════════════════════════════════════════════════════ */
+function chipClass(type){
+  return {milestone:'chip-milestone',threat:'chip-threat',crisis:'chip-crisis',positive:'chip-positive',present:'chip-present'}[type]||'chip-present';
+}
+function chipLabel(type){
+  return {milestone:'Milestone',threat:'Warning',crisis:'Critical Moment',positive:'Positive',present:'Present Day'}[type]||type;
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER: SINGLE TRADITION
+════════════════════════════════════════════════════ */
+function renderTradition(t){
+  document.documentElement.style.setProperty('--c', t.color);
+  document.documentElement.style.setProperty('--cd', t.colorDark);
+  document.documentElement.style.setProperty('--gr', t.gr);
+  document.getElementById('bgGlow').style.setProperty('--gr', t.gr);
+
+  const badgeHtml = t.badges.map(b=>`<span class="badge ${b.c}">${b.t}</span>`).join('');
+  const metricsHtml = t.metrics.map((m,i)=>`
+    <div class="metric reveal" style="transition-delay:${i*100}ms">
+      <div class="metric-val">${m.val}</div>
+      <div class="metric-lbl">${m.label}</div>
+      <div class="metric-sub">${m.sub}</div>
+    </div>`).join('');
+
+  const barsHtml = t.bars.map((b,i)=>`
+    <div class="hbar-row">
+      <div class="hbar-head"><span>${b.label}</span><span>${b.valTxt}</span></div>
+      <div class="hbar-track"><div class="hbar-fill" data-w="${b.val}"></div></div>
+    </div>`).join('');
+
+  const threatsHtml = t.threats.map((th,i)=>`
+    <div class="threat-card reveal" style="transition-delay:${i*120}ms">
+      <div class="threat-icon">${th.icon}</div>
+      <div class="threat-name">${th.name}</div>
+      <div class="threat-desc">${th.desc}</div>
+      <div class="sev-bar"><div class="sev-fill" data-w="${th.sev}"></div></div>
+    </div>`).join('');
+
+  const effortsHtml = t.efforts.map((e,i)=>`
+    <li class="effort-item reveal" style="transition-delay:${i*110}ms">
+      <div class="effort-icon">${e.icon}</div>
+      <div class="effort-text">${e.text}</div>
+    </li>`).join('');
+
+  const tlHtml = t.timeline.map((ev,i)=>{
+    const side = i%2===0 ? 'right' : 'left';
+    const cardSide = side==='right' ? 'from-right' : 'from-left';
+    return `
+    <div class="tl-event ${side}">
+      ${side==='right'?'<div class="tl-spacer"></div>':''}
+      <div class="tl-center"><div class="tl-dot" data-i="${i}"></div></div>
+      <div class="tl-card ${cardSide}" data-i="${i}">
+        <div class="tl-yr">${ev.yr}</div>
+        <div class="tl-text">${ev.text}</div>
+        <span class="tl-chip ${chipClass(ev.type)}">${chipLabel(ev.type)}</span>
+      </div>
+      ${side==='left'?'<div class="tl-spacer"></div>':''}
+    </div>`;
+  }).join('');
+
+  return `
+    <!-- Hero Banner -->
+    <div class="hero-banner reveal">
+      <div class="hb-icon">${t.icon}</div>
+      <div class="hb-info">
+        <div class="hb-name">${t.name}</div>
+        <div class="hb-script">${t.script}</div>
+        <div class="hb-region">📍 ${t.region} &nbsp;·&nbsp; 🗣 ${t.language} &nbsp;·&nbsp; 📅 Est. ${t.age}</div>
+        <div class="hb-badges">${badgeHtml}</div>
+      </div>
+      <div class="hb-right">
+        <div class="risk-big-label">RISK SCORE</div>
+        <div class="risk-big-val">${t.riskScore}</div>
+        <div class="risk-big-sub">/100 · ${t.riskLabel}</div>
+      </div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="sec-title reveal">📊 Key Indicators</div>
+    <div class="metrics-grid">${metricsHtml}</div>
+
+    <!-- Health Bars -->
+    <div class="sec-title reveal">📈 Health Dimensions</div>
+    <div class="health-panel reveal">${barsHtml}</div>
+
+    <!-- Gauge -->
+    <div class="sec-title reveal">⚠ Risk Assessment</div>
+    <div class="gauge-wrap reveal">
+      ${gaugeArc(t.riskScore, t.color, 'gauge-arc')}
+      <div class="gauge-info">
+        <div class="gi-label">Overall Risk Score (higher = more endangered)</div>
+        <div class="gi-val" id="gauge-val">0</div>
+        <div class="gi-sub">/ 100 · ${t.riskLabel}</div>
+        <div class="gi-desc">${t.gaugeDesc}</div>
+      </div>
+    </div>
+
+    <!-- Key Figure -->
+    <div class="figure-card reveal">
+      <div class="figure-icon">🎤</div>
+      <div>
+        <div class="figure-name">${t.keyFigure}</div>
+        <div class="figure-sub">Key living/historical figure(s) for this tradition</div>
+      </div>
+    </div>
+
+    <!-- Quote -->
+    <div class="quote-card reveal">
+      <div class="quote-text">${t.quote}</div>
+      <div class="quote-attr">${t.quoteBy}</div>
+    </div>
+
+    <!-- Threats -->
+    <div class="sec-title reveal">🚨 Principal Threats</div>
+    <div class="threats-grid">${threatsHtml}</div>
+
+    <!-- Timeline -->
+    <div class="sec-title reveal">📅 Historical Timeline</div>
+    <div class="timeline-wrap">
+      <div class="tl-spine" id="tl-spine"></div>
+      ${tlHtml}
+    </div>
+
+    <!-- Preservation -->
+    <div class="sec-title reveal">🛡 Active Preservation Efforts</div>
+    <ul class="efforts-list">${effortsHtml}</ul>
+
+    <!-- Source note -->
+    <div class="source-note reveal">
+      <strong style="color:rgba(160,170,200,.55)">Data Sources:</strong>
+      UNESCO ICH records (2005, 2008) · Wikipedia (Kinnera, Baul, Villu Pattu) · Banglapedia ·
+      Sangeet Natak Akademi publications · The Hindu · Indian Express · Telangana Today · The News Minute ·
+      Scroll.in · indica.today · Artists at Risk Connection · CJP.org.in ·
+      Madhya Pradesh Tribal Department archives. Practitioner counts are scholarly estimates — these communities operate outside formal census systems.
+    </div>`;
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER: ALL TRADITIONS OVERVIEW
+════════════════════════════════════════════════════ */
+function renderAll(){
+  document.documentElement.style.setProperty('--c', '#8890C0');
+  document.documentElement.style.setProperty('--cd', '#445588');
+  document.documentElement.style.setProperty('--gr', '120,130,180');
+
+  const tArr = Object.values(TRADITIONS);
+
+  const cardsHtml = tArr.map((t,i)=>`
+    <div class="av-card reveal" data-t="${t.id}" style="transition-delay:${i*120}ms;--c:${t.color};--cd:${t.colorDark}" onclick="setTab('${t.id}')">
+      <div class="av-flag">${t.icon}</div>
+      <div class="av-name" style="color:${t.color}">${t.name}</div>
+      <div class="av-loc">📍 ${t.region}</div>
+      ${t.bars.map(b=>`
+        <div class="av-bar-wrap">
+          <div class="av-bar-head"><span>${b.label}</span><span style="color:${t.color}">${b.valTxt}</span></div>
+          <div class="av-bar"><div class="av-fill" style="background:${t.color}" data-w="${b.val}"></div></div>
+        </div>`).join('')}
+      <div class="av-hint">↗ Click to explore in depth</div>
+    </div>`).join('');
+
+  const gaugesHtml = tArr.map((t,i)=>`
+    <div class="gauge-card reveal" style="background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:22px 18px;text-align:center;transition-delay:${i*150}ms">
+      <div style="font-size:.72rem;color:rgba(180,190,210,.5);margin-bottom:12px;letter-spacing:.06em">${t.icon} ${t.name.toUpperCase()} — Risk Score</div>
+      ${gaugeArc(t.riskScore, t.color, `ga-${t.id}`)}
+      <div style="font-family:'JetBrains Mono',monospace;font-size:1.4rem;font-weight:600;color:${t.color}" id="gv-${t.id}">0</div>
+      <div style="font-size:.65rem;color:rgba(160,170,200,.5);margin-top:3px">/ 100 · ${t.riskLabel}</div>
+    </div>`).join('');
+
+  const tableRows = [
+    ['Estimated Age','~1,000 BCE','~2,000 BCE','~2,000 BCE'],
+    ['Practitioners',tArr[0].practitioners, tArr[1].practitioners, tArr[2].practitioners],
+    ['UNESCO Status',`<span class="badge badge-blue">✓ 2008</span>`,`<span class="badge badge-red">✗ Not Listed</span>`,`<span class="badge badge-red">✗ Not Listed</span>`],
+    ['Risk Score',`<span style="color:${tArr[0].color};font-weight:600">${tArr[0].riskScore}/100</span>`,`<span style="color:${tArr[1].color};font-weight:600">${tArr[1].riskScore}/100</span>`,`<span style="color:${tArr[2].color};font-weight:600">${tArr[2].riskScore}/100</span>`],
+    ['Primary Threat','Religious suppression + poverty','Death of last master (Dec 2024)','Modern entertainment + non-viability'],
+    ['Transmission','Oral guru–shishya initiation','Tribal family lineage (broken)','Family troupes + new university course'],
+    ['Key Gov. Support','Sangeet Natak Akademi; UNESCO','Padma Shri; TG school curriculum','SNA; TN Diploma course 2024'],
+  ].map(row=>`
+    <tr>
+      <td style="color:rgba(160,170,200,.5);font-size:.72rem;padding:11px 16px;border-bottom:1px solid rgba(255,255,255,.04)">${row[0]}</td>
+      ${row.slice(1).map(v=>`<td style="font-size:.78rem;padding:11px 16px;border-bottom:1px solid rgba(255,255,255,.04);color:rgba(200,210,230,.8)">${v}</td>`).join('')}
+    </tr>`).join('');
+
+  return `
+    <div class="sec-title reveal" style="margin-top:0">🎯 Tradition Health Overview — Click any card to explore in depth</div>
+    <div class="all-cards">${cardsHtml}</div>
+
+    <div class="sec-title reveal">⚠ Risk Assessment Gauges</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:32px">${gaugesHtml}</div>
+
+    <div class="sec-title reveal">📊 Side-by-Side Comparison</div>
+    <div class="reveal" style="background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:14px;overflow:hidden;margin-bottom:32px">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr>
+            ${['Dimension',`🎵 Baul`,`🪕 Kinnera`,`🏹 Villu Pattu`].map((h,i)=>`<th style="padding:12px 16px;text-align:left;font-size:.63rem;letter-spacing:.1em;color:${i>0?tArr[i-1].color:'rgba(160,170,200,.45)'};text-transform:uppercase;font-weight:500;border-bottom:1px solid rgba(255,255,255,.07)">${h}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>
+
+    <div class="quote-card reveal" style="--c:#D0A030">
+      <div class="quote-text">"Every performance could be the last. When Darshanam Mogilaiah passed in December 2024, a 2,000-year-old musical lineage lost its last undisputed master. What dies with a practitioner is irreplaceable."</div>
+      <div class="quote-attr">— Cultural Conservation Scholars, 2025</div>
+    </div>
+
+    <div class="source-note reveal">
+      <strong style="color:rgba(160,170,200,.55)">Data Sources:</strong>
+      UNESCO ICH records · Wikipedia · Banglapedia · Sangeet Natak Akademi · The Hindu · Indian Express · Telangana Today · The News Minute · Scroll.in · indica.today · Artists at Risk Connection · CJP.org.in.
+      Practitioner counts are scholarly estimates — these communities operate outside formal census systems.
+    </div>`;
+}
+
+/* ════════════════════════════════════════════════════
+   SCROLL ANIMATIONS ENGINE
+════════════════════════════════════════════════════ */
+let revealObs;
+function initRevealObs(){
+  if(revealObs) revealObs.disconnect();
+  revealObs = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(!e.isIntersecting) return;
+      const el = e.target;
+      const delay = parseInt(el.style.transitionDelay)||0;
+      setTimeout(()=> el.classList.add('done'), delay);
+      revealObs.unobserve(el);
+    });
+  }, {threshold:0.12});
+  document.querySelectorAll('.reveal').forEach(el=> revealObs.observe(el));
+}
+
+function initBars(){
+  document.querySelectorAll('.hbar-fill[data-w], .av-fill[data-w], .sev-fill[data-w]').forEach(bar=>{
+    const barObs = new IntersectionObserver(entries=>{
+      entries.forEach(e=>{
+        if(!e.isIntersecting) return;
+        setTimeout(()=>{ bar.style.width = bar.dataset.w + '%'; }, 300);
+        barObs.unobserve(e.target);
+      });
+    }, {threshold:0.2});
+    barObs.observe(bar);
+  });
+}
+
+function initGauge(){
+  const arc = document.getElementById('gauge-arc');
+  const val = document.getElementById('gauge-val');
+  const score = parseInt(arc?.parentElement?.parentElement?.querySelector('.gauge-wrap') ? 0 : 0);
+  // Find score from the parent tradition
+  const t = TRADITIONS[currentTab];
+  if(!t) return;
+  const obs = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(!e.isIntersecting) return;
+      if(arc) arc.style.strokeDashoffset = ARC - (ARC * t.riskScore / 100);
+      if(val){
+        let cur=0; const step=t.riskScore/50;
+        const timer=setInterval(()=>{ cur=Math.min(cur+step,t.riskScore); val.textContent=Math.round(cur); if(cur>=t.riskScore)clearInterval(timer); },30);
+      }
+      obs.disconnect();
+    });
+  },{threshold:0.3});
+  if(arc) obs.observe(arc);
+}
+
+function initAllGauges(){
+  Object.values(TRADITIONS).forEach(t=>{
+    const arc = document.getElementById(`ga-${t.id}`);
+    const val = document.getElementById(`gv-${t.id}`);
+    if(!arc) return;
+    const obs = new IntersectionObserver(entries=>{
+      entries.forEach(e=>{
+        if(!e.isIntersecting) return;
+        arc.style.strokeDashoffset = ARC - (ARC * t.riskScore / 100);
+        if(val){
+          let cur=0;const step=t.riskScore/50;
+          const timer=setInterval(()=>{cur=Math.min(cur+step,t.riskScore);val.textContent=Math.round(cur);if(cur>=t.riskScore)clearInterval(timer);},30);
+        }
+        obs.disconnect();
+      });
+    },{threshold:0.3});
+    obs.observe(arc);
+  });
+}
+
+/* ── TIMELINE ANIMATIONS ── */
+function initTimeline(){
+  const spine = document.getElementById('tl-spine');
+  if(!spine) return;
+
+  const spineObs = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ spine.classList.add('grow'); spineObs.disconnect(); } });
+  },{threshold:0.05});
+  spineObs.observe(spine);
+
+  document.querySelectorAll('.tl-card, .tl-dot').forEach(el=>{
+    const obs = new IntersectionObserver(entries=>{
+      entries.forEach(e=>{
+        if(!e.isIntersecting) return;
+        const i = parseInt(el.dataset.i||0);
+        setTimeout(()=>{
+          el.classList.add(el.classList.contains('tl-dot') ? 'pop' : 'revealed');
+        }, i*80);
+        obs.unobserve(e.target);
+      });
+    },{threshold:0.2});
+    obs.observe(el);
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   TAB CONTROLLER
+════════════════════════════════════════════════════ */
+let currentTab = 'all';
+function setTab(t){
+  currentTab = t;
+  // Update tab UI
+  document.querySelectorAll('.tab').forEach(tab=>{
+    const active = tab.dataset.t === t;
+    tab.classList.toggle('active', active);
+  });
+  // Render view
+  const view = document.getElementById('view');
+  view.innerHTML = (t==='all') ? renderAll() : renderTradition(TRADITIONS[t]);
+  view.classList.remove('view-enter');
+  void view.offsetWidth; // force reflow
+  view.classList.add('view-enter');
+  // Init animations after a short delay (allow DOM paint)
+  setTimeout(()=>{
+    initRevealObs();
+    initBars();
+    if(t==='all') initAllGauges(); else initGauge();
+    initTimeline();
+  }, 60);
+  // Scroll to top of content
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// Initial render
+setTab('all');
+</script>
+</body>
+</html>

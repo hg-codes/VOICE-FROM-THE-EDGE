@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ektara Anatomy Explorer</title>
+  <meta name="description" content="Interactive anatomy guide for the Baul Ektara — click any labeled part to zoom in and learn." />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold:  #FFD166;  --amber: #E8A100;  --copper: #C87941;
+      --bg:    #07050F;  --bg-card: rgba(15,10,28,0.92);
+      --border: rgba(232,161,0,0.22);
+      --text:  #F0E6D0;  --muted: #8A7A60;
+      --peg-c:      #FFD166;
+      --neck-c:     #7BC87A;
+      --string-c:   #FFB347;
+      --bridge-c:   #FF8C69;
+      --membrane-c: #C49FFF;
+      --gourd-c:    #5DADE2;
+    }
+
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Starfield */
+    #stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+    /* Frame border */
+    .frame { position: fixed; inset: 8px; border: 1px solid var(--border); border-radius: 16px; pointer-events: none; z-index: 1; }
+
+    /* Page */
+    .page { position: relative; z-index: 2; display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* Header */
+    header { text-align: center; padding: 28px 20px 14px; border-bottom: 1px solid var(--border); }
+    .badge {
+      display: inline-block;
+      background: rgba(232,161,0,0.1); border: 1px solid var(--border);
+      border-radius: 100px; padding: 3px 16px;
+      font-family: 'Cinzel', serif; font-size: 0.58rem; letter-spacing: 0.25em;
+      color: var(--amber); margin-bottom: 10px; text-transform: uppercase;
+    }
+    h1 {
+      font-family: 'Cinzel', serif; font-weight: 800;
+      font-size: clamp(1.3rem, 3.5vw, 2.3rem);
+      background: linear-gradient(135deg, #FFD166, #E8A100, #C87941);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      line-height: 1.2; margin-bottom: 5px;
+    }
+    .sub { font-family: 'Crimson Text', serif; font-style: italic; font-size: 0.95rem; color: var(--muted); }
+
+    /* Main layout */
+    .explorer {
+      flex: 1; display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 0; max-width: 1260px; width: 100%;
+      margin: 0 auto; padding: 24px;
+    }
+
+    /* ── LEFT: Viewer ── */
+    .viewer { display: flex; flex-direction: column; align-items: center; gap: 14px; position: sticky; top: 24px; }
+
+    .zoom-hint {
+      font-size: 0.68rem; letter-spacing: 0.15em; color: var(--muted);
+      text-transform: uppercase; display: flex; align-items: center; gap: 8px;
+    }
+    .zoom-hint::before, .zoom-hint::after { content: ''; width: 28px; height: 1px; background: var(--border); }
+
+    /* SVG container */
+    .svg-wrap {
+      position: relative; width: 100%; max-width: 360px;
+      aspect-ratio: 3 / 7;
+      border-radius: 20px; border: 1px solid var(--border);
+      background: radial-gradient(ellipse at 50% 25%, rgba(232,161,0,0.07) 0%, transparent 65%),
+                  rgba(8, 5, 18, 0.75);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+    }
+
+    #ektara-svg {
+      width: 100%; height: 100%; display: block;
+      transform-origin: center center;
+      transition: transform 0.75s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+
+    /* Part groups: dim / highlight  */
+    .pg { transition: filter 0.5s ease, opacity 0.5s ease; }
+    .pg.dimmed   { filter: brightness(0.28) saturate(0.2); }
+    .pg.lit      { filter: brightness(1.4) saturate(1.5) drop-shadow(0 0 10px var(--part-color, #fff)); }
+
+    /* Hotspot animation */
+    .hs-pulse {
+      fill: none; stroke-width: 1.8;
+      animation: hs-anim 2.2s ease-out infinite;
+      pointer-events: none;
+    }
+    .hs-pulse-2 { animation-delay: 0.9s; }
+    @keyframes hs-anim {
+      0%   { r: 8;  opacity: 0.8; }
+      100% { r: 30; opacity: 0; }
+    }
+
+    /* Hotspot group */
+    .hotspot-g { cursor: pointer; }
+    .hotspot-g:hover .hs-core { r: 10; }
+    .hs-core { transition: r 0.2s; }
+
+    /* Reset button */
+    #reset-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 18px;
+      border: 1px solid var(--border); border-radius: 100px;
+      background: rgba(232,161,0,0.07); color: var(--amber);
+      font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+      transition: background 0.2s, border-color 0.2s, opacity 0.3s;
+      opacity: 0; pointer-events: none;
+    }
+    #reset-btn.show { opacity: 1; pointer-events: auto; }
+    #reset-btn:hover { background: rgba(232,161,0,0.16); border-color: var(--amber); }
+
+    /* Quick nav pills */
+    .part-nav { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; max-width: 360px; }
+    .nav-pill {
+      padding: 4px 11px; border-radius: 100px; border: 1px solid;
+      font-size: 0.62rem; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase; cursor: pointer; background: transparent;
+      transition: all 0.2s; opacity: 0.45; font-family: 'Inter', sans-serif;
+    }
+    .nav-pill:hover { opacity: 0.85; }
+    .nav-pill.active { opacity: 1; filter: brightness(1.2); }
+
+    /* ── RIGHT: Info Panel ── */
+    .info-panel { padding: 0 0 0 24px; position: sticky; top: 24px; }
+    .panel-inner { position: relative; }
+
+    /* Welcome card */
+    .welcome-card {
+      border-radius: 18px; border: 1px solid var(--border);
+      background: var(--bg-card); backdrop-filter: blur(16px);
+      padding: 26px;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+      opacity: 1; visibility: visible;
+    }
+    .welcome-card.gone { opacity: 0; visibility: hidden; pointer-events: none; }
+
+    .welcome-card h2 { font-family: 'Cinzel', serif; font-size: 1.15rem; color: var(--gold); margin-bottom: 10px; }
+    .welcome-card p { font-family: 'Crimson Text', serif; font-size: 1rem; color: var(--muted); line-height: 1.65; margin-bottom: 14px; }
+
+    .part-list { display: flex; flex-direction: column; gap: 7px; }
+    .pl-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.02);
+      cursor: pointer; transition: background 0.2s;
+    }
+    .pl-item:hover { background: rgba(255,255,255,0.06); }
+    .pl-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .pl-name { font-size: 0.8rem; font-weight: 500; }
+    .pl-local { font-size: 0.7rem; color: var(--muted); font-family: 'Crimson Text', serif; }
+
+    /* Part detail card */
+    .part-card {
+      position: absolute; top: 0; left: 0; right: 0;
+      border-radius: 18px; border: 1px solid var(--border);
+      background: var(--bg-card); backdrop-filter: blur(16px);
+      padding: 26px;
+      opacity: 0; visibility: hidden;
+      transform: translateX(22px);
+      transition: opacity 0.4s ease, visibility 0.4s ease, transform 0.4s ease;
+    }
+    .part-card.show {
+      opacity: 1; visibility: visible; transform: translateX(0);
+    }
+
+    .pc-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 18px; }
+    .pc-bar { width: 4px; min-height: 56px; border-radius: 4px; flex-shrink: 0; }
+    .pc-name { font-family: 'Cinzel', serif; font-size: 1.2rem; font-weight: 700; line-height: 1.2; margin-bottom: 3px; }
+    .pc-local { font-family: 'Crimson Text', serif; font-style: italic; font-size: 0.95rem; color: var(--muted); }
+
+    .info-block { margin-bottom: 14px; }
+    .info-lbl { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+    .info-txt { font-family: 'Crimson Text', serif; font-size: 1rem; line-height: 1.65; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 6px; }
+    .chip { padding: 3px 11px; border-radius: 100px; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.07em; border: 1px solid; }
+
+    .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+    .fun-fact {
+      padding: 13px 14px;
+      background: rgba(232,161,0,0.06);
+      border: 1px solid rgba(232,161,0,0.18);
+      border-radius: 10px;
+      font-family: 'Crimson Text', serif; font-style: italic;
+      font-size: 0.9rem; color: var(--gold); line-height: 1.55;
+    }
+    .fun-fact::before { content: '✦  '; }
+
+    .nav-row { display: flex; gap: 9px; margin-top: 18px; }
+    .nav-arrow {
+      flex: 1; padding: 8px; border-radius: 9px;
+      border: 1px solid var(--border); background: rgba(255,255,255,0.02);
+      color: var(--muted); font-size: 0.68rem; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      transition: all 0.2s;
+    }
+    .nav-arrow:hover:not(:disabled) { border-color: var(--amber); color: var(--gold); background: rgba(232,161,0,0.08); }
+    .nav-arrow:disabled { opacity: 0.25; cursor: not-allowed; }
+
+    /* Footer */
+    footer {
+      text-align: center; padding: 14px 24px 24px;
+      font-family: 'Crimson Text', serif; font-style: italic;
+      font-size: 0.85rem; color: var(--muted);
+      border-top: 1px solid var(--border); margin-top: 16px;
+    }
+
+    /* Responsive */
+    @media (max-width: 840px) {
+      .explorer { grid-template-columns: 1fr; padding: 14px; }
+      .info-panel { padding: 14px 0 0; position: static; }
+      .viewer { position: static; }
+      .part-card { position: static; margin-top: 12px; }
+      .welcome-card.gone { display: none; }
+    }
+  </style>
+</head>
+<body>
+<!-- INJECTED BACK NAVIGATION -->
+<div id="exhib-back-btn" style="position:fixed; top:20px; left:20px; z-index:999999;">
+<a href="index.html" style="background:rgba(15,10,25,0.75); border:1px solid rgba(232,161,0,0.3); color:#F5ECD7; text-decoration:none; padding:8px 16px; border-radius:100px; font-family:sans-serif; font-size:0.85rem; font-weight:500; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); display:flex; align-items:center; gap:8px; box-shadow:0 4px 20px rgba(0,0,0,0.5); transition:all 0.3s ease; text-transform:uppercase; letter-spacing:0.1em;" onmouseover="this.style.background='rgba(232,161,0,0.25)'; this.style.borderColor='#E8A100';" onmouseout="this.style.background='rgba(15,10,25,0.75)'; this.style.borderColor='rgba(232,161,0,0.3)';">
+   <span style="font-size:1.2em; margin-top:-2px;">&#10229;</span> Exhibition Hub
+</a>
+</div>
+
+
+<canvas id="stars"></canvas>
+<div class="frame"></div>
+
+<div class="page">
+  <header>
+    <div class="badge">✦ Interactive Anatomy Guide ✦</div>
+    <h1>Ektara Anatomy Explorer</h1>
+    <p class="sub">Click any glowing dot — or the part nav below — to zoom in and explore</p>
+  </header>
+
+  <div class="explorer">
+
+    <!-- ── LEFT: SVG Viewer ── -->
+    <div class="viewer">
+      <div class="zoom-hint">← Click a glowing dot to explore →</div>
+
+      <div class="svg-wrap">
+        <svg id="ektara-svg" viewBox="0 0 300 680" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="gd-gourd" cx="35%" cy="32%" r="65%">
+              <stop offset="0%"  stop-color="#D8894A"/>
+              <stop offset="55%" stop-color="#9E5E24"/>
+              <stop offset="100%" stop-color="#5E3210"/>
+            </radialGradient>
+            <radialGradient id="gd-sheen" cx="28%" cy="22%" r="50%">
+              <stop offset="0%"  stop-color="rgba(255,215,140,0.38)"/>
+              <stop offset="100%" stop-color="rgba(255,215,140,0)"/>
+            </radialGradient>
+            <linearGradient id="gd-bambooL" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%"  stop-color="#4A7218"/>
+              <stop offset="40%" stop-color="#80BE38"/>
+              <stop offset="100%" stop-color="#4A7218"/>
+            </linearGradient>
+            <linearGradient id="gd-bambooR" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%"  stop-color="#3D6014"/>
+              <stop offset="60%" stop-color="#6DAA30"/>
+              <stop offset="100%" stop-color="#3D6014"/>
+            </linearGradient>
+            <linearGradient id="gd-string" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"  stop-color="#FFE26A"/>
+              <stop offset="100%" stop-color="#CC9900"/>
+            </linearGradient>
+            <filter id="f-glow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="6" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!-- ── GOURD BODY ── -->
+          <g id="pg-gourd" class="pg" style="--part-color: #5DADE2">
+            <ellipse cx="150" cy="595" rx="115" ry="95" fill="rgba(0,0,0,0.35)" transform="translate(7,10)"/>
+            <ellipse cx="150" cy="595" rx="115" ry="95" fill="url(#gd-gourd)"/>
+            <ellipse cx="150" cy="595" rx="115" ry="95" fill="url(#gd-sheen)"/>
+            <ellipse cx="150" cy="595" rx="102" ry="84" fill="none" stroke="rgba(0,0,0,0.12)" stroke-width="1.2"/>
+            <ellipse cx="150" cy="595" rx="80"  ry="65" fill="none" stroke="rgba(0,0,0,0.09)" stroke-width="0.8"/>
+            <ellipse cx="150" cy="595" rx="55"  ry="44" fill="none" stroke="rgba(0,0,0,0.07)" stroke-width="0.7"/>
+            <ellipse cx="150" cy="674" rx="22"  ry="10" fill="rgba(0,0,0,0.5)"/>
+            <!-- neck junction band -->
+            <ellipse cx="150" cy="508" rx="38" ry="10" fill="#7A4818" stroke="#5A3010" stroke-width="1.5"/>
+          </g>
+
+          <!-- ── MEMBRANE ── -->
+          <g id="pg-membrane" class="pg" style="--part-color: #C49FFF">
+            <ellipse cx="150" cy="508" rx="110" ry="14" fill="#C27040" stroke="#904820" stroke-width="2"/>
+            <ellipse cx="150" cy="506" rx="101" ry="10" fill="#E8C882" opacity="0.9"/>
+            <ellipse cx="150" cy="506" rx="74"  ry="7.5" fill="none" stroke="rgba(170,130,70,0.35)" stroke-width="0.6"/>
+            <ellipse cx="150" cy="506" rx="48"  ry="5"   fill="none" stroke="rgba(170,130,70,0.25)" stroke-width="0.5"/>
+            <ellipse cx="150" cy="508" rx="110" ry="14" fill="none" stroke="#6B3810" stroke-width="1.5" stroke-dasharray="5,4"/>
+          </g>
+
+          <!-- ── BAMBOO NECK ── -->
+          <g id="pg-neck" class="pg" style="--part-color: #7BC87A">
+            <path d="M132,78 Q128,250 130,498 L140,498 Q138,250 150,78 Z" fill="url(#gd-bambooL)"/>
+            <path d="M150,78 Q162,250 160,498 L170,498 Q168,250 168,78 Z" fill="url(#gd-bambooR)"/>
+            <line x1="150" y1="78" x2="150" y2="498" stroke="rgba(0,0,0,0.45)" stroke-width="1.8"/>
+            <!-- bamboo nodes -->
+            <rect x="126" y="188" width="46" height="9" rx="4" fill="#325010" opacity="0.8"/>
+            <rect x="126" y="308" width="46" height="9" rx="4" fill="#325010" opacity="0.8"/>
+            <rect x="126" y="420" width="46" height="9" rx="4" fill="#325010" opacity="0.8"/>
+            <!-- sheen -->
+            <path d="M136,88 Q134,310 136,490" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="2.5" stroke-linecap="round"/>
+          </g>
+
+          <!-- ── BRIDGE ── -->
+          <g id="pg-bridge" class="pg" style="--part-color: #FF8C69">
+            <rect x="141" y="493" width="18" height="11" rx="2.5" fill="#F0DFA8" stroke="#BC9848" stroke-width="1.2"/>
+            <rect x="142" y="493" width="4"  height="11" rx="2"   fill="rgba(255,255,220,0.35)"/>
+            <line x1="150" y1="493" x2="150" y2="504" stroke="#A07838" stroke-width="1.5"/>
+          </g>
+
+          <!-- ── STRING ── -->
+          <g id="pg-string" class="pg" style="--part-color: #FFB347">
+            <line x1="150" y1="58"  x2="150" y2="493" stroke="url(#gd-string)" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="149" y1="58"  x2="149" y2="493" stroke="rgba(255,255,200,0.35)" stroke-width="0.8"/>
+          </g>
+
+          <!-- ── TUNING PEG ── -->
+          <g id="pg-peg" class="pg" style="--part-color: #FFD166">
+            <ellipse cx="150" cy="36"  rx="26" ry="11" fill="#C87030" stroke="#8B4E18" stroke-width="1.5"/>
+            <ellipse cx="150" cy="34"  rx="23" ry="9"  fill="#E8A050"/>
+            <ellipse cx="144" cy="31"  rx="10" ry="5"  fill="rgba(255,220,140,0.4)"/>
+            <ellipse cx="128" cy="36"  rx="9"  ry="6"  fill="#A06028" stroke="#6A3C10" stroke-width="1"/>
+            <ellipse cx="172" cy="36"  rx="9"  ry="6"  fill="#A06028" stroke="#6A3C10" stroke-width="1"/>
+            <rect x="138" y="44" width="24" height="22" rx="7" fill="#B07030" stroke="#8B4E18" stroke-width="1"/>
+            <rect x="140" y="45" width="7"  height="20" rx="3" fill="rgba(255,200,90,0.25)"/>
+          </g>
+
+          <!-- ══ HOTSPOTS ══ (larger transparent click targets + visible dots + labels) -->
+
+          <!-- PEG hotspot — right side top -->
+          <g class="hotspot-g" data-part="peg">
+            <circle cx="228" cy="36"  r="26" fill="transparent"/>
+            <circle class="hs-pulse"   cx="228" cy="36"  r="8" stroke="#FFD166"/>
+            <circle class="hs-pulse hs-pulse-2" cx="228" cy="36" r="8" stroke="#FFD166"/>
+            <circle class="hs-core"   cx="228" cy="36"  r="7" fill="#FFD166" opacity="0.92"/>
+            <line x1="178" y1="36"  x2="220" y2="36"  stroke="#FFD166" stroke-width="1" opacity="0.55"/>
+            <text x="237" y="31" fill="#FFD166" font-family="Inter,sans-serif" font-size="11" font-weight="600">Tuning</text>
+            <text x="237" y="43" fill="#FFD166" font-family="Inter,sans-serif" font-size="11" font-weight="600">Peg</text>
+          </g>
+
+          <!-- STRING hotspot — right, mid-upper -->
+          <g class="hotspot-g" data-part="string">
+            <circle cx="228" cy="200" r="26" fill="transparent"/>
+            <circle class="hs-pulse"   cx="228" cy="200" r="8" stroke="#FFB347"/>
+            <circle class="hs-pulse hs-pulse-2" cx="228" cy="200" r="8" stroke="#FFB347"/>
+            <circle class="hs-core"   cx="228" cy="200" r="7" fill="#FFB347" opacity="0.92"/>
+            <line x1="152" y1="200" x2="220" y2="200" stroke="#FFB347" stroke-width="1" opacity="0.55"/>
+            <text x="237" y="204" fill="#FFB347" font-family="Inter,sans-serif" font-size="11" font-weight="600">String</text>
+          </g>
+
+          <!-- NECK hotspot — left side, middle -->
+          <g class="hotspot-g" data-part="neck">
+            <circle cx="72" cy="310"  r="26" fill="transparent"/>
+            <circle class="hs-pulse"   cx="72" cy="310"  r="8" stroke="#7BC87A"/>
+            <circle class="hs-pulse hs-pulse-2" cx="72" cy="310" r="8" stroke="#7BC87A"/>
+            <circle class="hs-core"   cx="72" cy="310"  r="7" fill="#7BC87A" opacity="0.92"/>
+            <line x1="80" y1="310"  x2="128" y2="310"  stroke="#7BC87A" stroke-width="1" opacity="0.55"/>
+            <text x="18" y="305" fill="#7BC87A" font-family="Inter,sans-serif" font-size="11" font-weight="600">Bamboo</text>
+            <text x="24" y="318" fill="#7BC87A" font-family="Inter,sans-serif" font-size="11" font-weight="600">Neck</text>
+          </g>
+
+          <!-- BRIDGE hotspot — right, lower -->
+          <g class="hotspot-g" data-part="bridge">
+            <circle cx="228" cy="498" r="26" fill="transparent"/>
+            <circle class="hs-pulse"   cx="228" cy="498" r="8" stroke="#FF8C69"/>
+            <circle class="hs-pulse hs-pulse-2" cx="228" cy="498" r="8" stroke="#FF8C69"/>
+            <circle class="hs-core"   cx="228" cy="498" r="7" fill="#FF8C69" opacity="0.92"/>
+            <line x1="162" y1="498" x2="220" y2="498" stroke="#FF8C69" stroke-width="1" opacity="0.55"/>
+            <text x="237" y="502" fill="#FF8C69" font-family="Inter,sans-serif" font-size="11" font-weight="600">Bridge</text>
+          </g>
+
+          <!-- MEMBRANE hotspot — left, membrane level -->
+          <g class="hotspot-g" data-part="membrane">
+            <circle cx="30" cy="508"  r="26" fill="transparent"/>
+            <circle class="hs-pulse"   cx="30" cy="508"  r="8" stroke="#C49FFF"/>
+            <circle class="hs-pulse hs-pulse-2" cx="30" cy="508" r="8" stroke="#C49FFF"/>
+            <circle class="hs-core"   cx="30" cy="508"  r="7" fill="#C49FFF" opacity="0.92"/>
+            <line x1="38" y1="508"  x2="80" y2="508"   stroke="#C49FFF" stroke-width="1" opacity="0.55"/>
+            <text x="4"  y="503" fill="#C49FFF" font-family="Inter,sans-serif" font-size="10" font-weight="600">Mem-</text>
+            <text x="4"  y="516" fill="#C49FFF" font-family="Inter,sans-serif" font-size="10" font-weight="600">brane</text>
+          </g>
+
+          <!-- GOURD hotspot — left, gourd body -->
+          <g class="hotspot-g" data-part="gourd">
+            <circle cx="30" cy="595"  r="26" fill="transparent"/>
+            <circle class="hs-pulse"   cx="30" cy="595"  r="8" stroke="#5DADE2"/>
+            <circle class="hs-pulse hs-pulse-2" cx="30" cy="595" r="8" stroke="#5DADE2"/>
+            <circle class="hs-core"   cx="30" cy="595"  r="7" fill="#5DADE2" opacity="0.92"/>
+            <line x1="38" y1="595"  x2="72" y2="580"   stroke="#5DADE2" stroke-width="1" opacity="0.55"/>
+            <text x="4"  y="591" fill="#5DADE2" font-family="Inter,sans-serif" font-size="10" font-weight="600">Gourd</text>
+            <text x="4"  y="603" fill="#5DADE2" font-family="Inter,sans-serif" font-size="10" font-weight="600">Body</text>
+          </g>
+
+        </svg>
+      </div><!-- /.svg-wrap -->
+
+      <button id="reset-btn">← Back to full view</button>
+
+      <div class="part-nav" id="part-nav"></div>
+    </div><!-- /.viewer -->
+
+    <!-- ── RIGHT: Info Panel ── -->
+    <div class="info-panel">
+      <div class="panel-inner">
+
+        <!-- Welcome state -->
+        <div class="welcome-card" id="welcome-card">
+          <h2>Explore the Ektara</h2>
+          <p>
+            The ektara is a one-stringed folk instrument of the Baul tradition of Bengal.
+            Despite its humble appearance, every single part plays a vital and irreplaceable role
+            in creating its uniquely expressive, voice-like sound.
+          </p>
+          <p>Click a glowing dot on the instrument — or pick a part here:</p>
+          <div class="part-list" id="part-list"></div>
+        </div>
+
+        <!-- Part detail card -->
+        <div class="part-card" id="part-card">
+          <div class="pc-header">
+            <div class="pc-bar" id="pc-bar"></div>
+            <div>
+              <div class="pc-name" id="pc-name"></div>
+              <div class="pc-local" id="pc-local"></div>
+            </div>
+          </div>
+
+          <div class="info-block">
+            <div class="info-lbl">Description</div>
+            <div class="info-txt" id="pc-desc"></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="info-block">
+            <div class="info-lbl">Function</div>
+            <div class="chips" id="pc-funcs"></div>
+          </div>
+
+          <div class="info-block">
+            <div class="info-lbl">Material</div>
+            <div class="info-txt" id="pc-mat" style="font-style:italic;color:var(--muted);"></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="fun-fact" id="pc-fact"></div>
+
+          <div class="nav-row">
+            <button class="nav-arrow" id="btn-prev">← Prev</button>
+            <button class="nav-arrow" id="btn-next">Next →</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /.explorer -->
+
+  <footer>Baul Ektara — One String, Infinite Expression &nbsp;|&nbsp; Interactive Anatomy Guide</footer>
+</div>
+
+<script>
+/* ================================================================
+   EKTARA ANATOMY EXPLORER
+   ================================================================ */
+
+const PART_ORDER = ['peg','string','neck','bridge','membrane','gourd'];
+
+const PARTS = {
+  peg: {
+    name: 'Tuning Peg',
+    local: 'Khunti  (খুঁটি)',
+    color: '#FFD166',
+    svgId: 'pg-peg',
+    zoom: { scale: 2.5, ty: 39 },
+    desc: 'The wooden tuning peg sits at the very top of the ektara and controls the tension of the single string. Turning the peg tightens or loosens the string, raising or lowering the pitch. Unlike western machine heads, the khunti is a simple friction peg — tuning it requires years of intuitive practice.',
+    funcs: ['Pitch Tuning','String Tension Control'],
+    mat: 'Seasoned hardwood — rosewood, neem, or teak',
+    fact: 'Baul musicians often tune the ektara to match their own singing voice before a performance, comparing the string tone to their natural speaking pitch. The ektara is truly an extension of the singer.',
+  },
+  string: {
+    name: 'String — The Single Voice',
+    local: 'Sur / Taar  (সুর / তার)',
+    color: '#FFB347',
+    svgId: 'pg-string',
+    zoom: { scale: 1.9, ty: 12 },
+    desc: 'The single string is literally the voice of the ektara — sur means "tone" in Bengali. The player plucks it rhythmically with the index finger while dancing or chanting. A skilled Baul musician coaxes extraordinary expression from just one string through plucking force, rhythm, and simultaneous neck bending.',
+    funcs: ['Sound Production','Rhythmic Pulse','Melodic Drone'],
+    mat: 'Traditionally gut; modern versions use nylon monofilament or steel wire',
+    fact: 'The name "ektara" itself comes from "ek" (one) + "taar" (string) — one string, yet infinite expression. This embodies the Baul philosophy of seeking the one divine in all things.',
+  },
+  neck: {
+    name: 'Bamboo Neck',
+    local: 'Dand  (দণ্ড)',
+    color: '#7BC87A',
+    svgId: 'pg-neck',
+    zoom: { scale: 1.65, ty: 5 },
+    desc: 'The long neck is a single bamboo stalk split lengthwise into two halves. When the Baul musician squeezes the two halves together, the tension in the string momentarily increases — then decreases as the halves spring apart. This creates the signature gliding microtonal pitch bends which make the ektara sound strikingly like a human voice.',
+    funcs: ['Pitch Bending','Microtonal Expression','Structural Support'],
+    mat: 'Split and dried bamboo cane (Bambusoideae family)',
+    fact: 'The split bamboo neck is the ektara\'s secret weapon. Baul singers coordinate the squeeze with their breath phrasing to make the string "weep" or "laugh"— a technique called meend that no other instrument can replicate in quite the same way.',
+  },
+  bridge: {
+    name: 'Bridge',
+    local: 'Ghodi  (ঘোড়ী)',
+    color: '#FF8C69',
+    svgId: 'pg-bridge',
+    zoom: { scale: 3.2, ty: -19 },
+    desc: 'The tiny bridge is a small sliver of bone or hardwood placed between the string and the membrane. It lifts the string just above the membrane surface, allowing it to vibrate freely. The bridge height sets the "action" — how easily the string plays. Most importantly, it creates a subtle buzzing resonance called jivari, which gives the ektara its raw, earthy, living tone.',
+    funcs: ['String Clearance','Jivari Buzz Tone','Intonation Setting'],
+    mat: 'Historically camel bone or ivory; modern: dense hardwood or plastic',
+    fact: 'The jivari buzz at the bridge is intentional and sacred. Across all Indian instruments — sitar, veena, rudra vina — controlled buzz is deliberately built in. It represents the imperfection and aliveness of sound that classical Indian aesthetics prize above clinical purity.',
+  },
+  membrane: {
+    name: 'Membrane — Parchment Skin',
+    local: 'Chhal  (ছাল)',
+    color: '#C49FFF',
+    svgId: 'pg-membrane',
+    zoom: { scale: 2.6, ty: -24 },
+    desc: 'A piece of parchment skin is stretched tightly over the open upper mouth of the gourd resonator and secured with cord lacing. When the string vibrates it pulses the bridge, which transmits vibrations into the membrane, which then excites the air column inside the gourd. This multi-stage coupling transforms a tiny string vibration into the warm, full-bodied tone of the ektara.',
+    funcs: ['Vibration Transmission','Resonance Coupling','Tone Warmth'],
+    mat: 'Goat skin or deer parchment (modern: synthetic Mylar)',
+    fact: 'Baul musicians traditionally moisten the membrane slightly before a performance in dry weather. A dry skin sounds thin; a properly hydrated one blooms with warmth. Many musicians carry a damp cloth specifically for this purpose.',
+  },
+  gourd: {
+    name: 'Resonator — Gourd Body',
+    local: 'Tumba  (তুম্বা)',
+    color: '#5DADE2',
+    svgId: 'pg-gourd',
+    zoom: { scale: 1.75, ty: -42 },
+    desc: 'The dried bottle gourd forms the resonating chamber of the ektara. Its hollow interior amplifies and colors the vibrations transmitted through the membrane. A larger gourd produces a deeper, richer bass tone suited for slow meditative playing; a smaller gourd is brighter and more present — ideal for lively dance accompaniment.',
+    funcs: ['Sound Amplification','Resonance Chamber','Tone Coloring'],
+    mat: 'Dried bottle gourd — Lagenaria siceraria (লাউ)',
+    fact: 'Perfectly resonant gourds are searched for by craftsmen for years. The gourd must be fully hollow, crack-free, and have a wall thickness of 3–5 mm. A well-chosen gourd can make an ordinary ektara sound extraordinary — and a poor one can ruin a great string.',
+  },
+};
+
+/* ── References ── */
+const svg       = document.getElementById('ektara-svg');
+const resetBtn  = document.getElementById('reset-btn');
+const welcomeEl = document.getElementById('welcome-card');
+const cardEl    = document.getElementById('part-card');
+
+let current = null;
+
+/* ── Build welcome list + nav pills ── */
+function buildUI() {
+  const list = document.getElementById('part-list');
+  const nav  = document.getElementById('part-nav');
+
+  PART_ORDER.forEach(key => {
+    const p = PARTS[key];
+
+    // Welcome list row
+    const item = document.createElement('div');
+    item.className = 'pl-item';
+    item.innerHTML = `
+      <div class="pl-dot" style="background:${p.color};box-shadow:0 0 7px ${p.color}88;"></div>
+      <div>
+        <div class="pl-name" style="color:${p.color}">${p.name}</div>
+        <div class="pl-local">${p.local}</div>
+      </div>`;
+    item.addEventListener('click', () => selectPart(key));
+    list.appendChild(item);
+
+    // Nav pill
+    const pill = document.createElement('button');
+    pill.className = 'nav-pill';
+    pill.id = `pill-${key}`;
+    pill.textContent = p.name.split(' ')[0];
+    pill.style.borderColor = p.color;
+    pill.style.color = p.color;
+    pill.dataset.part = key;
+    nav.appendChild(pill);
+  });
+
+  // Hotspot clicks (via JS — no inline onclick)
+  document.querySelectorAll('.hotspot-g').forEach(el => {
+    el.addEventListener('click', () => selectPart(el.dataset.part));
+  });
+
+  // Nav pill clicks
+  document.querySelectorAll('.nav-pill').forEach(el => {
+    el.addEventListener('click', () => selectPart(el.dataset.part));
+  });
+
+  // Prev / Next
+  document.getElementById('btn-prev').addEventListener('click', () => navigate(-1));
+  document.getElementById('btn-next').addEventListener('click', () => navigate(1));
+
+  // Reset
+  resetBtn.addEventListener('click', resetView);
+}
+
+/* ── Select a part ── */
+function selectPart(key) {
+  const p = PARTS[key];
+  if (!p) return;
+  current = key;
+
+  /* 1. Dim all, light the chosen one */
+  PART_ORDER.forEach(k => {
+    const el = document.getElementById(PARTS[k].svgId);
+    if (!el) return;
+    el.classList.remove('dimmed','lit');
+    el.classList.add(k === key ? 'lit' : 'dimmed');
+  });
+
+  /* 2. Zoom SVG */
+  const z = p.zoom;
+  svg.style.transform = `scale(${z.scale}) translateY(${z.ty}%)`;
+
+  /* 3. Reset btn */
+  resetBtn.classList.add('show');
+
+  /* 4. Pill states */
+  document.querySelectorAll('.nav-pill').forEach(el => {
+    el.classList.toggle('active', el.dataset.part === key);
+  });
+
+  /* 5. Populate card */
+  document.getElementById('pc-bar').style.cssText =
+    `background:${p.color};box-shadow:0 0 12px ${p.color}70;`;
+  document.getElementById('pc-name').textContent  = p.name;
+  document.getElementById('pc-name').style.color  = p.color;
+  document.getElementById('pc-local').textContent = p.local;
+  document.getElementById('pc-desc').textContent  = p.desc;
+  document.getElementById('pc-mat').textContent   = p.mat;
+  document.getElementById('pc-fact').textContent  = p.fact;
+
+  const chips = document.getElementById('pc-funcs');
+  chips.innerHTML = '';
+  p.funcs.forEach(f => {
+    const c = document.createElement('span');
+    c.className = 'chip';
+    c.textContent = f;
+    c.style.cssText = `border-color:${p.color}70;color:${p.color};background:${p.color}18;`;
+    chips.appendChild(c);
+  });
+
+  /* 6. Prev / next arrows */
+  const idx = PART_ORDER.indexOf(key);
+  document.getElementById('btn-prev').disabled = idx === 0;
+  document.getElementById('btn-next').disabled = idx === PART_ORDER.length - 1;
+
+  /* 7. Show part card, hide welcome */
+  welcomeEl.classList.add('gone');
+  // Slight delay to re-trigger transition after content change
+  cardEl.classList.remove('show');
+  setTimeout(() => cardEl.classList.add('show'), 20);
+}
+
+/* ── Navigate prev/next ── */
+function navigate(dir) {
+  const idx = PART_ORDER.indexOf(current);
+  const next = PART_ORDER[idx + dir];
+  if (next) selectPart(next);
+}
+
+/* ── Reset ── */
+function resetView() {
+  current = null;
+  svg.style.transform = '';
+  resetBtn.classList.remove('show');
+  PART_ORDER.forEach(k => {
+    const el = document.getElementById(PARTS[k].svgId);
+    if (el) el.classList.remove('dimmed','lit');
+    const pill = document.getElementById(`pill-${k}`);
+    if (pill) pill.classList.remove('active');
+  });
+  welcomeEl.classList.remove('gone');
+  cardEl.classList.remove('show');
+}
+
+/* ── Starfield ── */
+function initStars() {
+  const c = document.getElementById('stars');
+  c.width = window.innerWidth; c.height = window.innerHeight;
+  const ctx = c.getContext('2d');
+  const stars = Array.from({ length: 180 }, () => ({
+    x: Math.random() * c.width, y: Math.random() * c.height,
+    r: Math.random() * 1.3, a: Math.random(), s: Math.random() * 0.004 + 0.001,
+  }));
+  (function draw() {
+    ctx.clearRect(0, 0, c.width, c.height);
+    stars.forEach(s => {
+      s.a += s.s;
+      ctx.globalAlpha = (Math.sin(s.a) + 1) / 2 * 0.55;
+      ctx.fillStyle = '#FFF8E0';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(draw);
+  })();
+}
+
+/* ── Init ── */
+window.addEventListener('DOMContentLoaded', () => {
+  buildUI();
+  initStars();
+});
+
+window.addEventListener('resize', () => {
+  const c = document.getElementById('stars');
+  c.width = window.innerWidth; c.height = window.innerHeight;
+});
+</script>
+</body>
+</html>

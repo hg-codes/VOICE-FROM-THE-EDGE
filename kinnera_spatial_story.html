@@ -1,0 +1,2041 @@
+<!DOCTYPE html>
+<html lang="te-IN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>పండుగ సాయన్న కథ | Kinnera Spatial Story</title>
+  <meta name="description" content="Immersive 3D Telugu village scene with Kinnera singer on horseback performing Panduga Sayanna Katha around a sacred fire.">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Noto+Serif+Telugu:wght@400;600&family=Inter:wght@300;400;600&display=swap" rel="stylesheet" />
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; font-family: 'Inter', sans-serif; }
+
+    #canvas-container { position: absolute; inset: 0; }
+
+    /* ── Blocker / Entry Screen ── */
+    #blocker {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at center, rgba(20,5,0,0.92) 0%, rgba(0,0,0,0.97) 100%);
+      z-index: 100;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      backdrop-filter: blur(8px);
+    }
+    #instructions {
+      max-width: 640px; padding: 48px 44px;
+      background: linear-gradient(135deg, rgba(30,12,0,0.95), rgba(10,5,20,0.95));
+      border: 1px solid rgba(255,160,50,0.3); border-radius: 20px;
+      box-shadow: 0 0 60px rgba(255,100,10,0.2), 0 20px 60px rgba(0,0,0,0.6);
+      cursor: pointer; transition: all 0.3s;
+      text-align: center;
+    }
+    #instructions:hover {
+      border-color: rgba(255,160,50,0.6);
+      box-shadow: 0 0 80px rgba(255,120,20,0.35), 0 20px 60px rgba(0,0,0,0.8);
+      transform: translateY(-2px);
+    }
+    .fire-emoji { font-size: 3rem; margin-bottom: 12px; display: block; animation: flicker 1.5s ease-in-out infinite alternate; }
+    @keyframes flicker { 0%{opacity:0.85;transform:scale(1)} 100%{opacity:1;transform:scale(1.1)} }
+
+    h1 {
+      font-family: 'Cinzel', serif; font-size: 2rem; color: #FFB347;
+      margin-bottom: 8px; letter-spacing: 0.08em;
+    }
+    .telugu-title {
+      font-family: 'Noto Serif Telugu', serif; font-size: 1.4rem; color: #FFCC80;
+      margin-bottom: 20px; font-weight: 600;
+    }
+    p { font-size: 1rem; line-height: 1.65; color: rgba(240,220,190,0.8); margin-bottom: 14px; }
+
+    .controls-hint {
+      display: flex; justify-content: center; gap: 20px; margin-top: 28px; flex-wrap: wrap;
+      font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; color: #FFB347;
+    }
+    .key-box {
+      padding: 5px 11px; background: rgba(255,165,50,0.1); border-radius: 6px;
+      border: 1px solid rgba(255,165,50,0.3); margin-right: 4px;
+    }
+    .enter-btn {
+      margin-top: 28px; padding: 14px 48px;
+      background: linear-gradient(135deg, #FF6B00, #FF9500);
+      border: none; border-radius: 50px; cursor: pointer;
+      font-size: 1.1rem; font-weight: 700; letter-spacing: 0.12em;
+      color: #fff; font-family: 'Cinzel', serif;
+      box-shadow: 0 4px 24px rgba(255,100,0,0.5);
+      transition: all 0.2s;
+    }
+    .enter-btn:hover { transform: scale(1.05); box-shadow: 0 6px 32px rgba(255,130,0,0.7); }
+
+    /* ── Crosshair ── */
+    #crosshair {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      pointer-events: none; z-index: 10;
+    }
+    #crosshair::before, #crosshair::after {
+      content:''; position: absolute; background: rgba(255,200,100,0.6);
+    }
+    #crosshair::before { width: 14px; height: 1.5px; top: -0.75px; left: -7px; }
+    #crosshair::after  { width: 1.5px; height: 14px; top: -7px; left: -0.75px; }
+
+    /* ── Lyrics Overlay ── */
+    #lyrics-panel {
+      position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+      pointer-events: none; z-index: 20; text-align: center;
+      min-width: 400px; max-width: 720px;
+    }
+    .lyric-line {
+      display: block; font-family: 'Noto Serif Telugu', serif;
+      font-size: 1.5rem; font-weight: 600;
+      color: #FFE0A0; text-shadow: 0 0 20px rgba(255,120,0,0.9), 0 0 40px rgba(255,80,0,0.5);
+      opacity: 0; transition: opacity 0.6s ease;
+      line-height: 1.6;
+    }
+    .lyric-line.transliteration {
+      font-family: 'Inter', sans-serif; font-size: 1rem; color: rgba(255,210,150,0.75);
+      font-style: italic; margin-top: 4px;
+    }
+    .lyric-line.active { opacity: 1; }
+    .lyric-line.fading { opacity: 0; }
+
+    /* ── Story Vision Canvas (emanates from fire) ── */
+    #story-canvas {
+      position: absolute; pointer-events: none; z-index: 15;
+      border-radius: 50%; opacity: 0;
+      transition: opacity 1s ease;
+      mix-blend-mode: screen;
+    }
+
+    /* ── Compass / Info HUD ── */
+    #hud {
+      position: absolute; top: 20px; right: 20px;
+      pointer-events: none; z-index: 10; text-align: right;
+      font-size: 0.75rem; color: rgba(255,190,80,0.6); letter-spacing: 0.05em;
+    }
+
+    /* ── Audio file input ── */
+    #audio-controls {
+      position: absolute; top: 20px; left: 20px;
+      z-index: 10; display: none;
+    }
+    #audio-controls.visible { display: block; }
+    #audio-controls label {
+      display: block; font-size: 0.75rem; color: rgba(255,190,80,0.7);
+      margin-bottom: 4px; cursor: pointer; letter-spacing: 0.05em;
+    }
+    #audio-controls input[type=file] { display: none; }
+    #audio-controls .file-btn {
+      padding: 6px 14px; background: rgba(255,140,0,0.2);
+      border: 1px solid rgba(255,160,0,0.4); border-radius: 20px;
+      color: #FFB347; font-size: 0.75rem; cursor: pointer;
+      transition: all 0.2s;
+    }
+    #audio-controls .file-btn:hover { background: rgba(255,140,0,0.4); }
+  </style>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+</head>
+<body>
+<!-- INJECTED BACK NAVIGATION -->
+<div id="exhib-back-btn" style="position:fixed; top:20px; left:20px; z-index:999999;">
+<a href="index.html" style="background:rgba(15,10,25,0.75); border:1px solid rgba(232,161,0,0.3); color:#F5ECD7; text-decoration:none; padding:8px 16px; border-radius:100px; font-family:sans-serif; font-size:0.85rem; font-weight:500; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); display:flex; align-items:center; gap:8px; box-shadow:0 4px 20px rgba(0,0,0,0.5); transition:all 0.3s ease; text-transform:uppercase; letter-spacing:0.1em;" onmouseover="this.style.background='rgba(232,161,0,0.25)'; this.style.borderColor='#E8A100';" onmouseout="this.style.background='rgba(15,10,25,0.75)'; this.style.borderColor='rgba(232,161,0,0.3)';">
+   <span style="font-size:1.2em; margin-top:-2px;">&#10229;</span> Exhibition Hub
+</a>
+</div>
+
+
+  <div id="canvas-container"></div>
+  <div id="crosshair"></div>
+  <canvas id="story-canvas"></canvas>
+
+  <!-- Lyrics Panel -->
+  <div id="lyrics-panel">
+    <span class="lyric-line" id="lyric-main"></span>
+    <span class="lyric-line transliteration" id="lyric-tr"></span>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="hud-dist">🔥 Approach the fire</div>
+    <div style="margin-top:4px;font-size:0.65rem;opacity:0.5;">WASD · Mouse · Click to lock</div>
+  </div>
+
+  <!-- Audio upload for MP3 (visible after entry) -->
+  <div id="audio-controls">
+    <label for="mp3-upload" class="file-btn">🎵 Load MP3 Audio</label>
+    <input type="file" id="mp3-upload" accept="audio/*">
+  </div>
+
+  <!-- Blocker -->
+  <div id="blocker">
+    <div id="instructions">
+      <span class="fire-emoji">🔥</span>
+      <h1>Storyteller's Sacred Fire</h1>
+      <div class="telugu-title">పండుగ సాయన్న కథ</div>
+      <p>Enter the Nallamala village. A Kinnera singer on horseback performs the sacred Sayanna ballad. Approach the fire — visions of the story emerge from the flames.</p>
+      <p style="font-size:0.85rem;color:rgba(255,180,80,0.5);font-style:italic;">Use headphones for spatial 3D audio experience.</p>
+      <div class="controls-hint">
+        <div><span class="key-box">W A S D</span> Move</div>
+        <div><span class="key-box">MOUSE</span> Look</div>
+        <div><span class="key-box">ESC</span> Exit</div>
+      </div>
+      <button class="enter-btn" id="enter-btn">Enter the Village ▶</button>
+    </div>
+  </div>
+
+  <script>
+  /* ═══════════════════════════════════════════════════════════════
+     PANDUGA SAYANNA KATHA | Immersive Village Scene
+     Singer on horseback, fire visions, spatial audio, lyrics
+  ═══════════════════════════════════════════════════════════════ */
+
+  // ── Lyrics for Panduga Sayanna Katha ──────────────────────────
+  const LYRICS = [
+    { time: 0,   te: "పండుగ సాయన్న...", tr: "Panduga Sayanna..." },
+    { time: 4,   te: "అడవుల మధ్యలో అగ్ని వెలిగించి", tr: "In the heart of the forest, lighting the fire" },
+    { time: 9,   te: "కిన్నెర మీటుతూ సాయన్న పాడెను", tr: "Plucking the Kinnera, Sayanna sang" },
+    { time: 14,  te: "నల్లమల కొండల సందున వెలసిన", tr: "Born in the valleys of Nallamala hills" },
+    { time: 19,  te: "గిరిజన వీరుని కీర్తి అమరమురా", tr: "The glory of the tribal hero is immortal" },
+    { time: 24,  te: "జయ జయ సాయన్న జయ జయ వీరుడా", tr: "Victory! Victory to Sayanna, the brave!" },
+    { time: 30,  te: "పండుగలో పాట పల్లె పులకించె", tr: "The festival song made the village tremble" },
+    { time: 35,  te: "కిన్నెర నాదం కొండలు మారుమోగె", tr: "The Kinnera's sound echoed through the mountains" },
+    { time: 40,  te: "సాయన్న గాయం సాగర మైనది", tr: "Sayanna's wound became an ocean" },
+    { time: 46,  te: "వీరత్వం నేర్చిన వేరు సాయన్న", tr: "Sayanna who learned the roots of valor" },
+    { time: 52,  te: "అగ్నిలో కలిసిన అమర కథలివి", tr: "These immortal stories merged with the fire" },
+    { time: 58,  te: "పండుగ సాయన్న... పండుగ సాయన్న...", tr: "Panduga Sayanna... Panduga Sayanna..." },
+    { time: 65,  te: "కిన్నెర పాటలో గుండె కరిగెను", tr: "Hearts melted in the Kinnera's song" },
+    { time: 72,  te: "నల్లమల తల్లి నమస్కారములు", tr: "Salutations to Mother Nallamala" },
+    { time: 80,  te: "", tr: "" },
+  ];
+
+  // ── Story Visions – each one maps 1:1 to a lyric line ────────
+  // Lyric index 0→vis 0, 1→vis 1, ... (vis index = lyricIdx % STORY_VISIONS.length)
+  const STORY_VISIONS = [
+    { name: "Panduga Sayanna",        draw: vis_Intro },
+    { name: "Forest Fire",            draw: vis_ForestFire },
+    { name: "Kinnera Playing",        draw: vis_KinneraPlay },
+    { name: "Nallamala Hills",        draw: vis_Nallamala },
+    { name: "Tribal Hero Glory",      draw: vis_TribalHero },
+    { name: "Victory Sayanna",        draw: vis_Victory },
+    { name: "Village Festival",       draw: vis_Festival },
+    { name: "Mountain Echo",          draw: vis_MountainEcho },
+    { name: "Wound Sacrifice",        draw: vis_Wound },
+    { name: "Roots of Valor",         draw: vis_Valor },
+    { name: "Immortal in Fire",       draw: vis_Immortal },
+    { name: "Hearts Melting",         draw: vis_Hearts },
+    { name: "Nallamala Mother",       draw: vis_NallamalaGoddess },
+    { name: "Closing",               draw: vis_Closing },
+  ];
+
+  // ── Three.js State ────────────────────────────────────────────
+  let camera, scene, renderer, controls;
+  let moveForward = false, moveBackward = false;
+  let moveLeft = false, moveRight = false;
+  let prevTime = performance.now();
+  const velocity = new THREE.Vector3();
+  const direction = new THREE.Vector3();
+
+  // Scene objects
+  let fireLight, fireLight2;
+  let fireParticles, smokeParticles, visionParticles;
+  let horseGroup, singerGroup;
+  let audioListener, fireSound, kinneraSound;
+  let userMp3Buffer = null;
+  let mp3Source = null;
+
+  // Horse orbit state
+  let orbitAngle = Math.PI * 0.6;  // starting angle
+  const ORBIT_RADIUS  = 7.0;       // distance from fire centre
+  const ORBIT_SPEED   = 0.09;      // radians/second (slow walk)
+  const FIRE_CENTER_Z = -4;        // fire world Z
+
+  // Story canvas state
+  const storyCanvas = document.getElementById('story-canvas');
+  const sCtx = storyCanvas.getContext('2d');
+  let currentVision = 0;
+  let visionAlpha = 0;
+  let visionTimer = 0;
+  let visionCycleLen = 7000;  // fallback cycle if no lyrics yet
+
+  // Lyric state
+  let lyricIdx = -1;           // -1 = not started
+  let songStartTime = 0;
+  let songPlaying = false;
+
+  // Fire particle arrays
+  const firePositions = [];
+  const fireVelocities = [];
+  const NUM_FIRE_PARTICLES = 200;
+  const NUM_SMOKE_PARTICLES = 80;
+  const NUM_VISION_PARTICLES = 60;
+
+  // ── Boot ─────────────────────────────────────────────────────
+  init();
+  animate();
+
+  // ── Init ─────────────────────────────────────────────────────
+  function init() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x010206);
+    scene.fog = new THREE.FogExp2(0x020308, 0.025);
+
+    camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.1, 200);
+    camera.position.set(0, 1.65, 14);
+
+    audioListener = new THREE.AudioListener();
+    camera.add(audioListener);
+
+    // PointerLock
+    controls = new THREE.PointerLockControls(camera, document.body);
+    const blocker = document.getElementById('blocker');
+    const enterBtn = document.getElementById('enter-btn');
+
+    enterBtn.addEventListener('click', () => controls.lock());
+
+    controls.addEventListener('lock', () => {
+      blocker.style.display = 'none';
+      document.getElementById('audio-controls').classList.add('visible');
+      startPerformance();
+    });
+    controls.addEventListener('unlock', () => {
+      blocker.style.display = 'flex';
+    });
+    scene.add(controls.getObject());
+
+    // Keys
+    document.addEventListener('keydown', e => {
+      switch (e.code) {
+        case 'ArrowUp': case 'KeyW': moveForward  = true; break;
+        case 'ArrowLeft': case 'KeyA': moveLeft    = true; break;
+        case 'ArrowDown': case 'KeyS': moveBackward= true; break;
+        case 'ArrowRight': case 'KeyD': moveRight  = true; break;
+      }
+    });
+    document.addEventListener('keyup', e => {
+      switch (e.code) {
+        case 'ArrowUp': case 'KeyW': moveForward  = false; break;
+        case 'ArrowLeft': case 'KeyA': moveLeft    = false; break;
+        case 'ArrowDown': case 'KeyS': moveBackward= false; break;
+        case 'ArrowRight': case 'KeyD': moveRight  = false; break;
+      }
+    });
+
+    // MP3 upload
+    document.getElementById('mp3-upload').addEventListener('change', loadMp3);
+
+    buildScene();
+
+    renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMappingExposure = 0.9;
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+    window.addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+      positionStoryCanvas();
+    });
+
+    positionStoryCanvas();
+  }
+
+  // ════════════════════════════════════════════════════════════
+  //  SCENE BUILDING
+  // ════════════════════════════════════════════════════════════
+  function buildScene() {
+    buildLighting();
+    buildGround();
+    buildSky();
+    buildVillage();
+    buildCampfireAndFire();
+    buildSingerOnHorse();
+    buildVillagers();
+    buildTrees();
+    buildHuts();
+    buildAudio();
+  }
+
+  // ── Lighting ─────────────────────────────────────────────────
+  function buildLighting() {
+    // Deep midnight blue ambient
+    scene.add(new THREE.AmbientLight(0x060818, 1.2));
+    // Moonlight directional
+    const moon = new THREE.DirectionalLight(0x8090C0, 0.35);
+    moon.position.set(-8, 20, -10);
+    moon.castShadow = true;
+    moon.shadow.mapSize.set(1024, 1024);
+    moon.shadow.camera.far = 60;
+    scene.add(moon);
+    // Stars hemisphere
+    scene.add(new THREE.HemisphereLight(0x0A0820, 0x050305, 0.5));
+  }
+
+  // ── Realistic Ground ─────────────────────────────────────────
+  function buildGround() {
+    // Main earth plane
+    const geoG = new THREE.PlaneGeometry(300, 300, 64, 64);
+    geoG.rotateX(-Math.PI / 2);
+    const posArr = geoG.attributes.position;
+    for (let i = 0; i < posArr.count; i++) {
+      const x = posArr.getX(i), z = posArr.getZ(i);
+      const d = Math.sqrt(x*x + z*z);
+      // Terrain bumps
+      let h = (Math.sin(x * 0.3) * Math.cos(z * 0.25)) * 0.6
+             + (Math.sin(x * 0.7 + z * 0.5)) * 0.2
+             + (Math.random() - 0.5) * 0.15;
+      // Flatten the village center
+      const flatFactor = Math.max(0, 1 - d / 18);
+      h *= (1 - flatFactor);
+      posArr.setY(i, h);
+    }
+    geoG.computeVertexNormals();
+
+    // Earthy brown/green material
+    const matG = new THREE.MeshStandardMaterial({
+      color: 0x2A1F0E, roughness: 1, metalness: 0,
+    });
+    const ground = new THREE.Mesh(geoG, matG);
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Dirt path circular around fire
+    const pathGeo = new THREE.RingGeometry(2, 10, 48, 1);
+    pathGeo.rotateX(-Math.PI / 2);
+    const pathMat = new THREE.MeshStandardMaterial({ color: 0x3D2B15, roughness: 1, metalness: 0 });
+    const path = new THREE.Mesh(pathGeo, pathMat);
+    path.position.set(0, 0.01, -4);
+    path.receiveShadow = true;
+    scene.add(path);
+
+    // Grass patches as instanced distributed green blades
+    buildGrassPatches();
+  }
+
+  function buildGrassPatches() {
+    const bladeGeo = new THREE.ConeGeometry(0.04, 0.5, 3);
+    const bladeMat = new THREE.MeshStandardMaterial({ color: 0x2D4A1E, roughness: 1 });
+    const count = 1200;
+    const dummy = new THREE.Object3D();
+    const igm = new THREE.InstancedMesh(bladeGeo, bladeMat, count);
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const r = 8 + Math.random() * 28;
+      dummy.position.set(Math.cos(angle)*r, 0.25, -4 + Math.sin(angle)*r);
+      dummy.rotation.y = Math.random() * Math.PI;
+      dummy.rotation.z = (Math.random()-0.5)*0.3;
+      dummy.scale.setScalar(0.6 + Math.random()*0.8);
+      dummy.updateMatrix();
+      igm.setMatrixAt(i, dummy.matrix);
+    }
+    igm.instanceMatrix.needsUpdate = true;
+    igm.castShadow = true;
+    scene.add(igm);
+  }
+
+  // ── Night Sky with Stars ──────────────────────────────────────
+  function buildSky() {
+    // Stars
+    const starGeo = new THREE.BufferGeometry();
+    const starCount = 2000;
+    const starPos = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.random() * Math.PI;
+      starPos[i*3]   = 150 * Math.sin(phi) * Math.cos(theta);
+      starPos[i*3+1] = 150 * Math.abs(Math.cos(phi));
+      starPos[i*3+2] = 150 * Math.sin(phi) * Math.sin(theta);
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    const starMat = new THREE.PointsMaterial({ color: 0xEEEEFF, size: 0.35, sizeAttenuation: true });
+    scene.add(new THREE.Points(starGeo, starMat));
+
+    // Moon
+    const moonGeo = new THREE.SphereGeometry(4, 16, 16);
+    const moonMat = new THREE.MeshBasicMaterial({ color: 0xCCCCEE });
+    const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+    moonMesh.position.set(-40, 80, -80);
+    scene.add(moonMesh);
+    // Moon glow
+    const mgGeo = new THREE.SphereGeometry(6, 8, 8);
+    const mgMat = new THREE.MeshBasicMaterial({ color: 0x8899BB, transparent: true, opacity: 0.08 });
+    const mgMesh = new THREE.Mesh(mgGeo, mgMat);
+    mgMesh.position.copy(moonMesh.position);
+    scene.add(mgMesh);
+  }
+
+  // ── Village elements: huts ─────────────────────────────────────
+  function buildHuts() {
+    const hutPositions = [
+      { x: -12, z: -8, rot: 0.4 },
+      { x: -14, z:  2, rot: 0.8 },
+      { x:  13, z: -6, rot: -0.3 },
+      { x:  11, z:  5, rot: -0.8 },
+      { x: -8,  z: 14, rot: 1.2 },
+      { x:  9,  z: 12, rot: -1.0 },
+    ];
+
+    hutPositions.forEach(h => {
+      const hg = new THREE.Group();
+      hg.position.set(h.x, 0, h.z);
+      hg.rotation.y = h.rot;
+
+      // Walls — cylindrical mud hut
+      const wallGeo = new THREE.CylinderGeometry(1.8, 2, 2.2, 8);
+      const wallMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 1 });
+      const wall = new THREE.Mesh(wallGeo, wallMat);
+      wall.position.y = 1.1;
+      wall.castShadow = true;
+      hg.add(wall);
+
+      // Thatched roof (cone)
+      const roofGeo = new THREE.ConeGeometry(2.6, 1.8, 8);
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 1 });
+      const roof = new THREE.Mesh(roofGeo, roofMat);
+      roof.position.y = 3.1;
+      roof.castShadow = true;
+      hg.add(roof);
+
+      // Door
+      const doorGeo = new THREE.PlaneGeometry(0.5, 1.1);
+      const doorMat = new THREE.MeshStandardMaterial({ color: 0x3D1F08, roughness: 1, side: THREE.DoubleSide });
+      const door = new THREE.Mesh(doorGeo, doorMat);
+      door.position.set(0, 0.55, 1.81);
+      hg.add(door);
+
+      // Window glow light
+      const wl = new THREE.PointLight(0xFF8C30, 0.4, 5);
+      wl.position.set(0.8, 1.4, 1.5);
+      hg.add(wl);
+
+      scene.add(hg);
+    });
+  }
+
+  // ── Village banner / decorations ─────────────────────────────
+  function buildVillage() {
+    // Totem pole near fire
+    const poleGeo = new THREE.CylinderGeometry(0.08, 0.12, 4, 8);
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x3D2206, roughness: 0.9 });
+    const pole = new THREE.Mesh(poleGeo, poleMat);
+    pole.position.set(-3.5, 2, -4);
+    pole.castShadow = true;
+    scene.add(pole);
+
+    // Hanging cloth strips on pole
+    for (let i = 0; i < 6; i++) {
+      const cGeo = new THREE.PlaneGeometry(0.12, 0.6);
+      const colors = [0xFF4444, 0xFFFF44, 0x44FF44, 0xFF8844, 0xFF44FF, 0x44AAFF];
+      const cMat = new THREE.MeshBasicMaterial({ color: colors[i], side: THREE.DoubleSide });
+      const cloth = new THREE.Mesh(cGeo, cMat);
+      cloth.position.set(-3.5 + Math.cos(i*1.05)*0.25, 3.5 - i*0.1, -4 + Math.sin(i*1.05)*0.25);
+      cloth.rotation.y = i * 1.05;
+      scene.add(cloth);
+    }
+
+    // Stone circle around fire
+    const stoneGeo = new THREE.SphereGeometry(0.22, 6, 5);
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x555050, roughness: 0.95 });
+    for (let i = 0; i < 10; i++) {
+      const angle = (i / 10) * Math.PI * 2;
+      const stone = new THREE.Mesh(stoneGeo, stoneMat);
+      stone.position.set(Math.cos(angle)*0.95, 0.12, -4 + Math.sin(angle)*0.95);
+      stone.rotation.set(Math.random(), Math.random(), Math.random());
+      stone.scale.set(1, 0.6 + Math.random()*0.3, 1.2);
+      scene.add(stone);
+    }
+  }
+
+  // ── Campfire and Particle System ──────────────────────────────
+  function buildCampfireAndFire() {
+    const fg = new THREE.Group();
+    fg.position.set(0, 0, -4); // Center fire
+    scene.add(fg);
+
+    // Logs - 3 crossed logs
+    const logGeo = new THREE.CylinderGeometry(0.08, 0.1, 1.6, 7);
+    const logMat = new THREE.MeshStandardMaterial({ color: 0x1A0A00, roughness: 1 });
+    [-1, 0, 1].forEach((k, i) => {
+      const angle = (i / 3) * Math.PI;
+      const log = new THREE.Mesh(logGeo, logMat);
+      log.rotation.set(Math.PI/2, 0, angle + 0.2);
+      log.position.set(Math.cos(angle)*0.3, 0.08, Math.sin(angle)*0.3);
+      log.castShadow = true;
+      fg.add(log);
+    });
+
+    // Ember bed
+    const emberGeo = new THREE.SphereGeometry(0.45, 8, 6);
+    const emberMat = new THREE.MeshBasicMaterial({ color: 0xFF3300 });
+    const embers = new THREE.Mesh(emberGeo, emberMat);
+    embers.position.y = 0.08;
+    embers.scale.y = 0.3;
+    fg.add(embers);
+
+    // Coal glow (darker bumpy sphere)
+    const coalGeo = new THREE.SphereGeometry(0.5, 8, 6);
+    const coalMat = new THREE.MeshBasicMaterial({ color: 0x661100 });
+    const coal = new THREE.Mesh(coalGeo, coalMat);
+    coal.position.y = 0.04;
+    coal.scale.y = 0.2;
+    fg.add(coal);
+
+    // Primary fire light
+    fireLight = new THREE.PointLight(0xFF6A00, 3.5, 28);
+    fireLight.position.set(0, 0.8, 0);
+    fireLight.castShadow = true;
+    fireLight.shadow.mapSize.set(512, 512);
+    fireLight.shadow.radius = 4;
+    fg.add(fireLight);
+
+    // Secondary fill fire light (slightly offset, cooler)
+    fireLight2 = new THREE.PointLight(0xFF2200, 1.5, 15);
+    fireLight2.position.set(0.3, 0.4, 0.3);
+    fg.add(fireLight2);
+
+    // Particle system: fire
+    const fpGeo = new THREE.BufferGeometry();
+    const fpPos = new Float32Array(NUM_FIRE_PARTICLES * 3);
+    const fpColor = new Float32Array(NUM_FIRE_PARTICLES * 3);
+    const fpSize = new Float32Array(NUM_FIRE_PARTICLES);
+
+    for (let i = 0; i < NUM_FIRE_PARTICLES; i++) {
+      const spread = 0.35;
+      fpPos[i*3]   = (Math.random()-0.5)*spread*2;
+      fpPos[i*3+1] = Math.random()*1.5;
+      fpPos[i*3+2] = (Math.random()-0.5)*spread*2;
+      // Warm color gradient
+      const t = Math.random();
+      fpColor[i*3]   = 1;
+      fpColor[i*3+1] = 0.2 + t * 0.5;
+      fpColor[i*3+2] = t * 0.08;
+      fpSize[i] = 0.06 + Math.random() * 0.18;
+
+      firePositions.push(new THREE.Vector3(fpPos[i*3], fpPos[i*3+1], fpPos[i*3+2]));
+      fireVelocities.push(new THREE.Vector3(
+        (Math.random()-0.5)*0.006,
+        0.025 + Math.random()*0.03,
+        (Math.random()-0.5)*0.006
+      ));
+    }
+    fpGeo.setAttribute('position', new THREE.BufferAttribute(fpPos, 3));
+    fpGeo.setAttribute('color',    new THREE.BufferAttribute(fpColor, 3));
+    fpGeo.setAttribute('size',     new THREE.BufferAttribute(fpSize, 1));
+
+    fireParticles = new THREE.Points(fpGeo, new THREE.PointsMaterial({
+      size: 0.15, vertexColors: true,
+      blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
+      sizeAttenuation: true,
+    }));
+    fireParticles.position.copy(fg.position);
+    scene.add(fireParticles);
+
+    // Smoke particles
+    const spGeo = new THREE.BufferGeometry();
+    const spPos = new Float32Array(NUM_SMOKE_PARTICLES * 3);
+    const spSz  = new Float32Array(NUM_SMOKE_PARTICLES);
+    for (let i = 0; i < NUM_SMOKE_PARTICLES; i++) {
+      spPos[i*3]   = (Math.random()-0.5)*0.8;
+      spPos[i*3+1] = 1.2 + Math.random()*3;
+      spPos[i*3+2] = (Math.random()-0.5)*0.8;
+      spSz[i] = 0.3 + Math.random()*0.6;
+    }
+    spGeo.setAttribute('position', new THREE.BufferAttribute(spPos, 3));
+    spGeo.setAttribute('size',     new THREE.BufferAttribute(spSz, 1));
+    smokeParticles = new THREE.Points(spGeo, new THREE.PointsMaterial({
+      color: 0x444466, size: 0.5,
+      blending: THREE.NormalBlending, transparent: true, opacity: 0.18, depthWrite: false,
+      sizeAttenuation: true,
+    }));
+    smokeParticles.position.copy(fg.position);
+    scene.add(smokeParticles);
+
+    // Magical vision sparks (golden motes that rise and form images)
+    const vpGeo = new THREE.BufferGeometry();
+    const vpPos = new Float32Array(NUM_VISION_PARTICLES * 3);
+    const vpCol = new Float32Array(NUM_VISION_PARTICLES * 3);
+    for (let i = 0; i < NUM_VISION_PARTICLES; i++) {
+      vpPos[i*3]   = (Math.random()-0.5)*0.5;
+      vpPos[i*3+1] = 0.3 + Math.random()*2.5;
+      vpPos[i*3+2] = (Math.random()-0.5)*0.5;
+      vpCol[i*3]   = 1; vpCol[i*3+1] = 0.85; vpCol[i*3+2] = 0.3;
+    }
+    vpGeo.setAttribute('position', new THREE.BufferAttribute(vpPos, 3));
+    vpGeo.setAttribute('color',    new THREE.BufferAttribute(vpCol, 3));
+    visionParticles = new THREE.Points(vpGeo, new THREE.PointsMaterial({
+      size: 0.05, vertexColors: true,
+      blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
+      sizeAttenuation: true,
+    }));
+    visionParticles.position.copy(fg.position);
+    scene.add(visionParticles);
+
+    // Spatial audio nodes
+    fireSound = new THREE.PositionalAudio(audioListener);
+    fireSound.setRefDistance(3);
+    fireSound.setRolloffFactor(1.2);
+    fireSound.setMaxDistance(40);
+    fg.add(fireSound);
+  }
+
+  // ── Realistic Singer on Horse ─────────────────────────────────
+  function buildSingerOnHorse() {
+    horseGroup = new THREE.Group();
+    // Position: right of fire, slightly behind, facing inward toward fire+audience
+    horseGroup.position.set(4.5, 0, -6);
+    horseGroup.rotation.y = Math.PI * 1.15; // Facing the fire
+    scene.add(horseGroup);
+
+    const skinMat  = new THREE.MeshStandardMaterial({ color: 0x5C3317, roughness: 0.8 });
+    const bodyMat  = new THREE.MeshStandardMaterial({ color: 0x8B0000, roughness: 0.9 }); // red attire
+    const horseMat = new THREE.MeshStandardMaterial({ color: 0x2A1A06, roughness: 0.85 }); // dark horse
+    const saddleMat= new THREE.MeshStandardMaterial({ color: 0xCC6600, roughness: 0.7 });
+    const kinMat   = new THREE.MeshStandardMaterial({ color: 0x8B7A30, roughness: 0.5, metalness: 0.3 });
+    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xEEEECC, roughness: 0.9 });
+
+    /*──── HORSE ────*/
+    const horseBody = new THREE.Group();
+    horseGroup.add(horseBody);
+
+    // Body barrel
+    const hBodyGeo = new THREE.SphereGeometry(1, 12, 8);
+    const hBody = new THREE.Mesh(hBodyGeo, horseMat);
+    hBody.scale.set(1.1, 0.8, 1.9);
+    hBody.position.y = 1.4;
+    hBody.castShadow = true;
+    horseBody.add(hBody);
+
+    // Neck
+    const hNeckGeo = new THREE.CylinderGeometry(0.22, 0.3, 1.0, 8);
+    const hNeck = new THREE.Mesh(hNeckGeo, horseMat);
+    hNeck.position.set(0, 2.1, 0.9);
+    hNeck.rotation.x = -0.4;
+    hNeck.castShadow = true;
+    horseBody.add(hNeck);
+
+    // Head
+    const hHeadGeo = new THREE.BoxGeometry(0.38, 0.42, 0.7);
+    const hHead = new THREE.Mesh(hHeadGeo, horseMat);
+    hHead.position.set(0, 2.6, 1.5);
+    hHead.rotation.x = 0.15;
+    hHead.castShadow = true;
+    horseBody.add(hHead);
+
+    // Ears
+    const earGeo = new THREE.ConeGeometry(0.06, 0.22, 5);
+    [-0.12, 0.12].forEach(ex => {
+      const ear = new THREE.Mesh(earGeo, horseMat);
+      ear.position.set(ex, 2.9, 1.45);
+      horseBody.add(ear);
+    });
+
+    // Mane (thin boxes)
+    for (let m = 0; m < 6; m++) {
+      const mGeo = new THREE.BoxGeometry(0.04, 0.25, 0.08);
+      const mMesh = new THREE.Mesh(mGeo, new THREE.MeshStandardMaterial({ color: 0x1A0800 }));
+      mMesh.position.set(0, 2.3 + m*0.12, 0.7 + m*0.08);
+      mMesh.rotation.z = (Math.random()-0.5)*0.3;
+      horseBody.add(mMesh);
+    }
+
+    // Tail
+    const tailGeo = new THREE.CylinderGeometry(0.03, 0.08, 0.8, 5);
+    const tail = new THREE.Mesh(tailGeo, new THREE.MeshStandardMaterial({ color: 0x1A0800 }));
+    tail.position.set(0, 1.3, -1.7);
+    tail.rotation.x = 0.5;
+    horseBody.add(tail);
+
+    // Legs (4)
+    const legGeo = new THREE.CylinderGeometry(0.12, 0.09, 1.1, 7);
+    const hoofGeo = new THREE.BoxGeometry(0.18, 0.14, 0.22);
+    const hoofMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+    [[-0.4, 0.55], [0.4, 0.55], [-0.4, -0.55], [0.4, -0.55]].forEach(([lx, lz]) => {
+      const leg = new THREE.Mesh(legGeo, horseMat);
+      leg.position.set(lx, 0.65, lz);
+      leg.castShadow = true;
+      horseBody.add(leg);
+      const hoof = new THREE.Mesh(hoofGeo, hoofMat);
+      hoof.position.set(lx, 0.07, lz);
+      horseBody.add(hoof);
+    });
+
+    // Saddle
+    const saddleGeo = new THREE.SphereGeometry(0.55, 8, 5);
+    const saddle = new THREE.Mesh(saddleGeo, saddleMat);
+    saddle.scale.set(1, 0.35, 0.95);
+    saddle.position.set(0, 2.05, 0.05);
+    horseBody.add(saddle);
+
+    /*──── SINGER (on saddle) ────*/
+    singerGroup = new THREE.Group();
+    singerGroup.position.set(0, 2.1, 0.05);
+    horseGroup.add(singerGroup);
+
+    // Torso (dhoti/kurta - seated slightly forward)
+    const torsoGeo = new THREE.CylinderGeometry(0.22, 0.26, 0.75, 8);
+    const torso = new THREE.Mesh(torsoGeo, bodyMat);
+    torso.position.y = 0.78;
+    torso.castShadow = true;
+    singerGroup.add(torso);
+
+    // Lap / lower body (seated)
+    const lapGeo = new THREE.BoxGeometry(0.38, 0.2, 0.45);
+    const lap = new THREE.Mesh(lapGeo, whiteMat); // dhoti cloth
+    lap.position.set(0, 0.43, 0.12);
+    singerGroup.add(lap);
+
+    // Neck
+    const sNeckGeo = new THREE.CylinderGeometry(0.1, 0.12, 0.22, 8);
+    const sNeck = new THREE.Mesh(sNeckGeo, skinMat);
+    sNeck.position.y = 1.27;
+    singerGroup.add(sNeck);
+
+    // Head
+    const sHeadGeo = new THREE.SphereGeometry(0.22, 12, 10);
+    const sHead = new THREE.Mesh(sHeadGeo, skinMat);
+    sHead.position.y = 1.55;
+    sHead.castShadow = true;
+    singerGroup.add(sHead);
+
+    // Turban / pagdi
+    const turbanGeo = new THREE.TorusGeometry(0.18, 0.09, 8, 16);
+    const turbanMat = new THREE.MeshStandardMaterial({ color: 0xFF6600, roughness: 0.8 });
+    const turban = new THREE.Mesh(turbanGeo, turbanMat);
+    turban.rotation.x = Math.PI/2;
+    turban.position.y = 1.72;
+    singerGroup.add(turban);
+    // Turban top dome
+    const tDomeGeo = new THREE.SphereGeometry(0.18, 8, 6);
+    const tDome = new THREE.Mesh(tDomeGeo, turbanMat);
+    tDome.position.y = 1.77;
+    tDome.scale.y = 0.5;
+    singerGroup.add(tDome);
+
+    // Face features
+    const eyeGeo = new THREE.SphereGeometry(0.035, 8, 6);
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+    [-0.08, 0.08].forEach(ex => {
+      const eye = new THREE.Mesh(eyeGeo, eyeMat);
+      eye.position.set(ex, 1.57, 0.19);
+      singerGroup.add(eye);
+    });
+
+    // Mustache
+    const mustGeo = new THREE.BoxGeometry(0.14, 0.025, 0.04);
+    const mustMat = new THREE.MeshStandardMaterial({ color: 0x1A0800 });
+    const must = new THREE.Mesh(mustGeo, mustMat);
+    must.position.set(0, 1.50, 0.21);
+    singerGroup.add(must);
+
+    // ═══════ KINNERA INSTRUMENT – large & clearly held ═══════
+    // The kinnera is held with the gourd/resonator resting against
+    // the singer's right hip, neck angling up-left, both hands visible.
+    const kinneraG = new THREE.Group();
+    kinneraG.position.set(0.0, 0.62, 0.38);   // chest-forward, hip-level
+    kinneraG.rotation.set(-0.18, -0.12, -Math.PI*0.32); // neck tilts up-left
+    kinneraG.scale.setScalar(2.1);             // 2.1x – unmistakably large
+    singerGroup.add(kinneraG);
+
+    // Resonator / body (large golden gourd)
+    const kinBodyMat = new THREE.MeshStandardMaterial({
+      color: 0xD4A020, roughness: 0.35, metalness: 0.25,
+      emissive: 0x552200, emissiveIntensity: 0.3
+    });
+    const resGeo = new THREE.SphereGeometry(0.16, 12, 10);
+    const res = new THREE.Mesh(resGeo, kinBodyMat);
+    res.scale.set(1.0, 0.65, 1.15);
+    kinneraG.add(res);
+
+    // Sound hole detail
+    const holeGeo = new THREE.SphereGeometry(0.06, 8, 6);
+    const holeMat = new THREE.MeshBasicMaterial({ color: 0x1A0800 });
+    const hole = new THREE.Mesh(holeGeo, holeMat);
+    hole.scale.setScalar(0.5); hole.position.set(0, 0, 0.14);
+    kinneraG.add(hole);
+
+    // Neck (thick, clearly visible)
+    const knNeckMat = new THREE.MeshStandardMaterial({ color: 0xBB9900, roughness: 0.55, emissive: 0x221100, emissiveIntensity: 0.2 });
+    const knNeckGeo = new THREE.CylinderGeometry(0.03, 0.038, 1.05, 8);
+    const knNeck = new THREE.Mesh(knNeckGeo, knNeckMat);
+    knNeck.position.y = 0.62;
+    kinneraG.add(knNeck);
+
+    // Fingerboard face on neck
+    const fbGeo = new THREE.BoxGeometry(0.055, 0.96, 0.02);
+    const fbMat = new THREE.MeshStandardMaterial({ color: 0x331100 });
+    const fb = new THREE.Mesh(fbGeo, fbMat);
+    fb.position.set(0, 0.62, 0.035);
+    kinneraG.add(fb);
+
+    // Strings – 3 bright golden strings running full length
+    const strMat = new THREE.MeshBasicMaterial({ color: 0xFFEE55 });
+    for (let s = 0; s < 3; s++) {
+      const strGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.9, 3);
+      const str = new THREE.Mesh(strGeo, strMat);
+      str.position.set(-0.02 + s*0.02, 0.58, 0.04);
+      kinneraG.add(str);
+    }
+
+    // Tuning pegs (3 side pegs, clearly visible)
+    for (let p = 0; p < 3; p++) {
+      const pegGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.09, 6);
+      pegGeo.rotateZ(Math.PI/2);
+      const peg = new THREE.Mesh(pegGeo, new THREE.MeshStandardMaterial({ color: 0x996600, metalness: 0.4 }));
+      peg.position.set(0.04, 0.92 + p*0.07, 0);
+      kinneraG.add(peg);
+    }
+
+    // Headstock (decorated)
+    const hsGeo = new THREE.BoxGeometry(0.14, 0.13, 0.055);
+    const hsMat = new THREE.MeshStandardMaterial({ color: 0xCC9900, roughness: 0.4, emissive: 0x221100, emissiveIntensity: 0.2 });
+    const hs = new THREE.Mesh(hsGeo, hsMat);
+    hs.position.y = 1.09;
+    kinneraG.add(hs);
+
+    // Kinnera glow point light so it glows warmly
+    const kinGlow = new THREE.PointLight(0xFFAA22, 0.6, 2.5);
+    kinGlow.position.set(0, 0.5, 0);
+    kinneraG.add(kinGlow);
+    singerGroup.userData.kinGlow = kinGlow;
+
+    // ── LEFT ARM: cradles the neck (up near pegs) ──
+    const armMat = new THREE.MeshStandardMaterial({ color: 0x780000, roughness: 0.85 });
+    const armGeo = new THREE.CylinderGeometry(0.065, 0.07, 0.58, 7);
+    const leftArm = new THREE.Mesh(armGeo, armMat);
+    leftArm.rotation.set(-0.55, 0.25, -1.05);  // reaching forward-up to neck
+    leftArm.position.set(-0.24, 1.07, 0.3);
+    singerGroup.add(leftArm);
+    singerGroup.userData.leftArm = leftArm;
+
+    // Left hand gripping neck at upper position
+    const handMat = new THREE.MeshStandardMaterial({ color: 0x6B4020, roughness: 0.8 });
+    const lHandGeo = new THREE.SphereGeometry(0.075, 7, 6);
+    const lHand = new THREE.Mesh(lHandGeo, handMat);
+    lHand.scale.set(1.3, 0.8, 1.1);
+    lHand.position.set(-0.36, 1.35, 0.46);
+    singerGroup.add(lHand);
+
+    // ── RIGHT ARM: plucks strings near resonator ──
+    const rightArm = new THREE.Mesh(armGeo, armMat);
+    rightArm.rotation.set(-0.3, -0.18, 1.1);   // across body to pluck
+    rightArm.position.set(0.2, 0.9, 0.32);
+    singerGroup.add(rightArm);
+    singerGroup.userData.rightArm = rightArm;
+
+    // Right hand near resonator (plucking position)
+    const rHand = new THREE.Mesh(lHandGeo, handMat);
+    rHand.scale.set(1.3, 0.8, 1.1);
+    rHand.position.set(0.17, 0.65, 0.46);
+    singerGroup.add(rHand);
+    singerGroup.userData.rHand = rHand;
+
+    // Singing glow (orange halo around singer)
+    const glowGeo = new THREE.SphereGeometry(0.9, 10, 8);
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0xFF8800, transparent: true, opacity: 0.04, side: THREE.BackSide });
+    const glow = new THREE.Mesh(glowGeo, glowMat);
+    glow.position.y = 1.3;
+    singerGroup.add(glow);
+    singerGroup.userData.glow   = glow;
+    singerGroup.userData.glowMat = glowMat;
+
+    // Kinnera positional audio
+    kinneraSound = new THREE.PositionalAudio(audioListener);
+    kinneraSound.setRefDistance(4);
+    kinneraSound.setRolloffFactor(1.2);
+    kinneraSound.setMaxDistance(50);
+    singerGroup.add(kinneraSound);
+  }
+
+  // ── Trees: Palms + Eucalyptus + Banyan ───────────────────────
+  function buildTrees() {
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3D2206, roughness: 1 });
+    const leafMat  = new THREE.MeshStandardMaterial({ color: 0x1A3A0A, roughness: 1 });
+    const palmLeafMat = new THREE.MeshStandardMaterial({ color: 0x2D5010, roughness: 1, side: THREE.DoubleSide });
+
+    // Coconut palms
+    const palmPositions = [
+      {x:-10, z:-15}, {x:10, z:-18}, {x:-16, z:-10}, {x:18, z:-8},
+      {x:-12, z: 10}, {x:14, z: 10}, {x: 0, z: 20}, {x:-20, z: 5},
+    ];
+    palmPositions.forEach(p => {
+      const pg = new THREE.Group();
+      pg.position.set(p.x, 0, p.z);
+      pg.rotation.y = Math.random() * Math.PI * 2;
+      // Curved trunk (leaning slightly)
+      const h = 7 + Math.random()*3;
+      const trunkGeo = new THREE.CylinderGeometry(0.09, 0.18, h, 7);
+      const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+      trunk.position.y = h/2;
+      trunk.rotation.z = (Math.random()-0.5)*0.15;
+      trunk.castShadow = true;
+      pg.add(trunk);
+      // Palm fronds (planes radiating outward)
+      for (let f = 0; f < 7; f++) {
+        const angle = (f / 7) * Math.PI * 2;
+        const frondGeo = new THREE.PlaneGeometry(0.25, 2.5);
+        const frond = new THREE.Mesh(frondGeo, palmLeafMat);
+        frond.position.set(Math.cos(angle)*0.5, h+0.3, Math.sin(angle)*0.5);
+        frond.rotation.y = angle;
+        frond.rotation.x = 0.5 + Math.random()*0.3;
+        frond.castShadow = true;
+        pg.add(frond);
+      }
+      // Coconuts
+      const coconutGeo = new THREE.SphereGeometry(0.12, 7, 6);
+      const coconutMat = new THREE.MeshStandardMaterial({ color: 0x5C3A1E, roughness: 0.9 });
+      for (let c = 0; c < 4; c++) {
+        const a2 = (c/4)*Math.PI*2;
+        const coc = new THREE.Mesh(coconutGeo, coconutMat);
+        coc.position.set(Math.cos(a2)*0.28, h+0.15, Math.sin(a2)*0.28);
+        pg.add(coc);
+      }
+      scene.add(pg);
+    });
+
+    // Banyan-style trees (thick trunk + canopy)
+    const banyanPositions = [
+      {x:-22, z:-20}, {x:24, z:-22}, {x:-25, z: 15}, {x:22, z: 18},
+    ];
+    banyanPositions.forEach(p => {
+      const bg = new THREE.Group();
+      bg.position.set(p.x, 0, p.z);
+      bg.rotation.y = Math.random()*Math.PI*2;
+      const th = 8 + Math.random()*4;
+      const btg = new THREE.CylinderGeometry(0.4, 0.55, th, 8);
+      const bt = new THREE.Mesh(btg, trunkMat);
+      bt.position.y = th/2;
+      bt.castShadow = true;
+      bg.add(bt);
+      // Branches
+      for (let b = 0; b < 5; b++) {
+        const ba = (b/5)*Math.PI*2;
+        const brGeo = new THREE.CylinderGeometry(0.07, 0.15, 2.5, 6);
+        const br = new THREE.Mesh(brGeo, trunkMat);
+        br.position.set(Math.cos(ba)*1.2, th-1, Math.sin(ba)*1.2);
+        br.rotation.z = Math.cos(ba)*0.5;
+        br.rotation.x = Math.sin(ba)*0.5;
+        bg.add(br);
+      }
+      // Canopy layers
+      for (let cl = 0; cl < 3; cl++) {
+        const r = 2.5 + cl * 1.2;
+        const leafGeo = new THREE.SphereGeometry(r, 8, 6);
+        const leaf = new THREE.Mesh(leafGeo, leafMat);
+        leaf.position.set(0, th + cl*0.8, 0);
+        leaf.scale.y = 0.55;
+        leaf.castShadow = true;
+        bg.add(leaf);
+      }
+      // Aerial roots (thin cylinders hanging)
+      for (let r = 0; r < 5; r++) {
+        const ra = Math.random()*Math.PI*2;
+        const rg = new THREE.CylinderGeometry(0.02, 0.02, 2+Math.random()*2, 4);
+        const rm = new THREE.Mesh(rg, trunkMat);
+        rm.position.set(Math.cos(ra)*(1.2+Math.random()*1.5), th-1.5, Math.sin(ra)*(1.2+Math.random()*1.5));
+        bg.add(rm);
+      }
+      scene.add(bg);
+    });
+
+    // Dense forest silhouette ring (cone trees far away)
+    for (let i = 0; i < 35; i++) {
+      const angle = Math.random()*Math.PI*2;
+      const r = 28 + Math.random()*15;
+      const h = 5 + Math.random()*7;
+      const t = new THREE.Mesh(
+        new THREE.ConeGeometry(1.2 + Math.random(), h, 6),
+        new THREE.MeshStandardMaterial({ color: 0x0A1A05, roughness: 1 })
+      );
+      t.position.set(Math.cos(angle)*r, h/2, -4 + Math.sin(angle)*r);
+      t.castShadow = true;
+      scene.add(t);
+    }
+  }
+
+  // ── Villagers around fire ─────────────────────────────────────
+  function buildVillagers() {
+    window.villagers = [];
+    const COLORS = [0x8B1A1A, 0x2E4A1A, 0x1A2E4A, 0x4A2E1A, 0x4A1A2E];
+
+    for (let i = 0; i < 14; i++) {
+      const angle = (i / 14) * Math.PI * 2;
+      const dist = 3 + Math.random() * 2.5;
+      const vg = new THREE.Group();
+      vg.position.set(Math.cos(angle)*dist, 0, -4 + Math.sin(angle)*dist);
+      vg.lookAt(0, 0, -4);
+
+      const col = COLORS[i % COLORS.length];
+      const vbMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.9 });
+      const skinMat = new THREE.MeshStandardMaterial({ color: 0x7A3B10 + i*0x010101, roughness: 0.8 });
+
+      // Body
+      const vb = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.85, 8), vbMat);
+      vb.position.y = 0.43; vb.castShadow = true; vg.add(vb);
+      // Head
+      const vh = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), skinMat);
+      vh.position.y = 1.05; vh.castShadow = true; vg.add(vh);
+      // Arms animated
+      const armG = new THREE.CylinderGeometry(0.055, 0.055, 0.5, 6);
+      const la = new THREE.Mesh(armG, skinMat); la.position.set(-0.28, 0.65, 0); vg.add(la);
+      const ra = new THREE.Mesh(armG, skinMat); ra.position.set( 0.28, 0.65, 0); vg.add(ra);
+      vg.userData.la = la; vg.userData.ra = ra;
+      vg.userData.phase = Math.random()*Math.PI*2;
+      vg.userData.speed = 1.2 + Math.random()*2;
+
+      // Some women with buns
+      if (i % 3 === 0) {
+        const bunGeo = new THREE.SphereGeometry(0.07, 6, 6);
+        const bun = new THREE.Mesh(bunGeo, new THREE.MeshStandardMaterial({ color: 0x1A0800 }));
+        bun.position.set(0, 1.22, -0.1);
+        vg.add(bun);
+      }
+
+      window.villagers.push(vg);
+      scene.add(vg);
+    }
+  }
+
+  // ── Audio ─────────────────────────────────────────────────────
+  function buildAudio() {
+    // The audio is attached to scene objects; synth fallback
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  PERFORMANCE: Start when user enters
+  // ═══════════════════════════════════════════════════════════════
+  let synthsStarted = false;
+
+  function startPerformance() {
+    if (synthsStarted) return;
+    synthsStarted = true;
+    songStartTime = performance.now();
+    songPlaying = true;
+    initSynths();
+  }
+
+  function initSynths() {
+    const actx = audioListener.context;
+
+    /* ── Fire crackle ── */
+    const fireNode = actx.createBufferSource();
+    const bufSize = actx.sampleRate * 3;
+    const buf = actx.createBuffer(1, bufSize, actx.sampleRate);
+    const dat = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) dat[i] = Math.random()*2-1;
+    fireNode.buffer = buf;
+    fireNode.loop = true;
+    const fireLPF = actx.createBiquadFilter();
+    fireLPF.type = 'bandpass'; fireLPF.frequency.value = 400; fireLPF.Q.value = 0.3;
+    const fireLPF2 = actx.createBiquadFilter();
+    fireLPF2.type = 'lowpass'; fireLPF2.frequency.value = 200;
+    fireNode.connect(fireLPF); fireLPF.connect(fireLPF2);
+    fireSound.setNodeSource(fireLPF2);
+    fireNode.start();
+
+    /* ── Kinnera melodic drone ── */
+    // Base tanpura-like drone in A
+    const dronePitches = [110, 165, 220, 330];
+    const masterGain = actx.createGain(); masterGain.gain.value = 0.5;
+
+    dronePitches.forEach((freq, idx) => {
+      const osc = actx.createOscillator();
+      osc.type = idx % 2 === 0 ? 'sawtooth' : 'triangle';
+      osc.frequency.value = freq;
+
+      // Slight detuning for chorus
+      const detune = actx.createOscillator();
+      const detGain = actx.createGain(); detGain.gain.value = 3;
+      detune.frequency.value = 0.3 + idx*0.15;
+      detune.connect(detGain); detGain.connect(osc.detune);
+      detune.start();
+
+      const g = actx.createGain();
+      g.gain.value = 0.15 / (idx+1);
+      osc.connect(g); g.connect(masterGain);
+      osc.start();
+    });
+
+    // Melodic motif — a repeating raga-like phrase
+    const melodySched = actx.createOscillator();
+    melodySched.type = 'sawtooth';
+    const melGain = actx.createGain(); melGain.gain.value = 0.25;
+    melodySched.connect(melGain); melGain.connect(masterGain);
+
+    const scale = [220, 247, 261, 294, 330, 370, 392]; // Sa Re Ga Ma Pa Da (A Bhairavi-like)
+    let noteIdx = 0;
+    function scheduleNote() {
+      melodySched.frequency.setValueAtTime(scale[noteIdx % scale.length], actx.currentTime);
+      melGain.gain.setValueAtTime(0.25, actx.currentTime);
+      melGain.gain.exponentialRampToValueAtTime(0.01, actx.currentTime + 0.8);
+      noteIdx++;
+      setTimeout(scheduleNote, 700 + Math.random()*300);
+    }
+    melodySched.start();
+    scheduleNote();
+
+    // Filter
+    const kinFilter = actx.createBiquadFilter();
+    kinFilter.type = 'bandpass'; kinFilter.frequency.value = 500; kinFilter.Q.value = 2;
+    masterGain.connect(kinFilter);
+    kinneraSound.setNodeSource(kinFilter);
+
+    // Vibrato on singer
+    const vibr = actx.createOscillator();
+    const vibrG = actx.createGain(); vibrG.gain.value = 4;
+    vibr.frequency.value = 5.5;
+    vibr.connect(vibrG); vibrG.connect(melodySched.frequency);
+    vibr.start();
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  MP3 Loading
+  // ═══════════════════════════════════════════════════════════════
+  function loadMp3(e) {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      audioListener.context.decodeAudioData(ev.target.result, function(buffer) {
+        userMp3Buffer = buffer;
+        if (mp3Source) { try { mp3Source.stop(); } catch(e){} }
+        mp3Source = audioListener.context.createBufferSource();
+        mp3Source.buffer = userMp3Buffer;
+        mp3Source.loop = true;
+        kinneraSound.setNodeSource(mp3Source);
+        mp3Source.start();
+        songStartTime = performance.now();
+        songPlaying = true;
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  STORY CANVAS – Visions from Fire
+  // ═══════════════════════════════════════════════════════════════
+  function positionStoryCanvas() {
+    storyCanvas.width  = 360;
+    storyCanvas.height = 360;
+    // Positioned roughly above the fire in screen space (updated in animate loop)
+  }
+
+  function projectFireToScreen() {
+    const fireWorld = new THREE.Vector3(0, 1.8, -4);
+    fireWorld.project(camera);
+    const x = (fireWorld.x * 0.5 + 0.5) * innerWidth;
+    const y = (-fireWorld.y * 0.5 + 0.5) * innerHeight;
+    return { x, y, visible: fireWorld.z < 1 };
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     NARRATIVE STORY VISION DRAWERS
+     Each function draws one chapter of the Sayanna Katha story.
+     Called each frame with (ctx, width, height, alpha, timeSec).
+  ════════════════════════════════════════════════════════════ */
+
+  // Helper: draw a silhouette figure (head+body+legs)
+  function drawFigure(ctx, x, y, scale, col) {
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(x, y - scale*0.55, scale*0.18, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x - scale*0.14, y - scale*0.38);
+    ctx.lineTo(x + scale*0.14, y - scale*0.38);
+    ctx.lineTo(x + scale*0.12, y);  ctx.lineTo(x - scale*0.12, y);
+    ctx.closePath(); ctx.fill();
+    // Legs
+    ctx.fillRect(x - scale*0.12, y, scale*0.09, scale*0.3);
+    ctx.fillRect(x + scale*0.03, y, scale*0.09, scale*0.3);
+  }
+
+  // Helper: layered mountain silhouette
+  function drawMountains(ctx, w, h, yBase, numLayers, cols) {
+    cols.forEach((col, li) => {
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.moveTo(0, h);
+      const peaks = 5 + li*2;
+      for (let p = 0; p <= peaks; p++) {
+        const px = (p / peaks) * w;
+        const py = yBase - (li+1)*h*0.06 - (p%2 === 0 ? h*(0.08+li*0.04) : h*0.01);
+        ctx.lineTo(px, py);
+      }
+      ctx.lineTo(w, h); ctx.closePath(); ctx.fill();
+    });
+  }
+
+  // Helper: draw kinnera instrument (horizontal/diagonal)
+  function drawKinneraInstrument(ctx, cx, cy, w, h, angle, alpha) {
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(angle);
+    ctx.globalAlpha = alpha;
+    // Body gourd
+    ctx.fillStyle = '#D4A020';
+    ctx.beginPath(); ctx.ellipse(0, 0, w*0.12, h*0.08, 0, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#FFD040'; ctx.lineWidth = 2; ctx.stroke();
+    // Neck
+    ctx.strokeStyle = '#AA8800'; ctx.lineWidth = w*0.025;
+    ctx.beginPath(); ctx.moveTo(w*0.1, 0); ctx.lineTo(w*0.55, 0); ctx.stroke();
+    // Strings
+    ctx.strokeStyle = '#FFEE66'; ctx.lineWidth = 1.5;
+    for (let s = -1; s <= 1; s++) {
+      ctx.beginPath(); ctx.moveTo(w*0.09, s*h*0.02); ctx.lineTo(w*0.52, s*h*0.018); ctx.stroke();
+    }
+    // Headstock
+    ctx.fillStyle = '#CC9900';
+    ctx.fillRect(w*0.52, -h*0.04, w*0.06, h*0.08);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
+  // 0 – INTRO: Sayanna silhouette with kinnera against full moon
+  function vis_Intro(ctx, w, h, alpha, ts) {
+    // Sky gradient
+    const sky = ctx.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, `rgba(5,0,20,${alpha})`);
+    sky.addColorStop(1, `rgba(25,8,0,${alpha})`);
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+    // Stars
+    ctx.fillStyle = `rgba(255,255,200,${alpha*0.85})`;
+    for (let i = 0; i < 35; i++) {
+      const sx = ((i*137)%100)/100 * w;  const sy = ((i*97)%100)/100 * h*0.55;
+      const ss = 0.8 + (i%4)*0.4;
+      ctx.beginPath(); ctx.arc(sx, sy, ss, 0, Math.PI*2); ctx.fill();
+    }
+    // Moon
+    const moonX = w*0.78, moonY = h*0.2;
+    const mg = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, w*0.13);
+    mg.addColorStop(0, `rgba(240,235,200,${alpha})`); mg.addColorStop(0.7, `rgba(200,195,160,${alpha*0.9})`); mg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(moonX, moonY, w*0.13, 0, Math.PI*2); ctx.fill();
+    // Hills silhouette
+    drawMountains(ctx, w, h, h*0.82, 2, [`rgba(10,5,0,${alpha})`, `rgba(20,8,0,${alpha})`]);
+    // Sayanna silhouette with turban
+    const sx = w*0.42, sy = h*0.73;
+    ctx.fillStyle = `rgba(15,5,0,${alpha})`;
+    drawFigure(ctx, sx, sy, h*0.28, `rgba(15,5,0,${alpha})`);
+    // Turban
+    ctx.fillStyle = `rgba(150,40,0,${alpha})`;
+    ctx.beginPath(); ctx.arc(sx, sy - h*0.215, h*0.075, 0, Math.PI*2); ctx.fill();
+    // Kinnera held up
+    drawKinneraInstrument(ctx, sx+w*0.04, sy-h*0.13, w, h, -0.5, alpha*0.95);
+    // Title text glow
+    ctx.save();
+    ctx.shadowColor = '#FF8800'; ctx.shadowBlur = 20;
+    ctx.fillStyle = `rgba(255,200,80,${alpha*0.9})`;
+    ctx.font = `bold ${h*0.065}px 'Noto Serif Telugu', serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('పండుగ సాయన్న', w/2, h*0.93);
+    ctx.restore();
+  }
+
+  // 1 – FOREST FIRE: Sayanna lights fire in deep forest, night
+  function vis_ForestFire(ctx, w, h, alpha, ts) {
+    ctx.fillStyle = `rgba(3,1,8,${alpha})`; ctx.fillRect(0, 0, w, h);
+    // Dense tree silhouettes
+    const treeXs = [0.05,0.15,0.25,0.72,0.82,0.92,0.35,0.62];
+    treeXs.forEach((tx, i) => {
+      const th = h*(0.35 + (i%3)*0.1);
+      ctx.fillStyle = i%2===0 ? `rgba(8,18,4,${alpha})` : `rgba(5,12,2,${alpha})`;
+      ctx.beginPath();
+      ctx.moveTo(tx*w - w*0.05, h); ctx.lineTo(tx*w, h - th); ctx.lineTo(tx*w + w*0.05, h); ctx.fill();
+    });
+    // Camp fire glow in center
+    const fx = w*0.5, fy = h*0.75;
+    const fg = ctx.createRadialGradient(fx, fy, 0, fx, fy, w*0.22);
+    fg.addColorStop(0, `rgba(255,220,80,${alpha})`); fg.addColorStop(0.3, `rgba(255,100,10,${alpha*0.7})`); fg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(fx, fy, w*0.22, 0, Math.PI*2); ctx.fill();
+    // Fire flame shapes
+    ctx.fillStyle = `rgba(255,140,20,${alpha*0.9})`;
+    for (let f = 0; f < 5; f++) {
+      const fa = (f/5)*Math.PI*2; const fr = w*0.06;
+      ctx.beginPath();
+      ctx.moveTo(fx, fy); ctx.quadraticCurveTo(fx + Math.cos(fa)*fr, fy - Math.sin(Math.abs(fa))*fr*1.5, fx + Math.cos(fa+0.4)*fr*0.3, fy-w*0.1-f*3);
+      ctx.closePath(); ctx.fill();
+    }
+    // Sayanna sitting by fire
+    const py = h*0.82;
+    ctx.fillStyle = `rgba(20,5,0,${alpha})`;
+    ctx.beginPath(); ctx.arc(w*0.35, py-h*0.07, h*0.06, 0, Math.PI*2); ctx.fill();
+    ctx.fillRect(w*0.32, py-h*0.05, w*0.06, h*0.07);
+    drawKinneraInstrument(ctx, w*0.31, py-h*0.03, w, h, -0.6, alpha*0.9);
+    // Stars visible through canopy
+    ctx.fillStyle = `rgba(255,255,200,${alpha*0.5})`;
+    for (let s = 0; s < 10; s++) { ctx.beginPath(); ctx.arc(((s*71)%100)/100*w, ((s*53)%40)/100*h, 1.2, 0, Math.PI*2); ctx.fill(); }
+  }
+
+  // 2 – KINNERA PLAYING: Close-up of Sayanna playing, notes floating
+  function vis_KinneraPlay(ctx, w, h, alpha, ts) {
+    const bg = ctx.createRadialGradient(w*0.5, h*0.5, 0, w*0.5, h*0.5, w*0.6);
+    bg.addColorStop(0, `rgba(40,15,0,${alpha})`); bg.addColorStop(1, `rgba(5,0,10,${alpha})`);
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+    // Singer figure holding kinnera — large
+    const sx = w*0.38, sy = h*0.72;
+    ctx.fillStyle = `rgba(100,20,5,${alpha})`;
+    ctx.beginPath(); ctx.arc(sx, sy-h*0.25, h*0.1, 0, Math.PI*2); ctx.fill(); // head
+    ctx.fillRect(sx-w*0.07, sy-h*0.17, w*0.14, h*0.2);   // body
+    // Turbaned head
+    ctx.fillStyle = `rgba(200,60,0,${alpha})`;
+    ctx.beginPath(); ctx.arc(sx, sy-h*0.28, h*0.075, 0, Math.PI*2); ctx.fill();
+    // Left arm extended
+    ctx.strokeStyle = `rgba(100,20,5,${alpha})`; ctx.lineWidth = h*0.04;
+    ctx.beginPath(); ctx.moveTo(sx-w*0.06, sy-h*0.1); ctx.lineTo(sx-w*0.22, sy-h*0.2); ctx.stroke();
+    // Right arm across
+    ctx.beginPath(); ctx.moveTo(sx+w*0.06, sy-h*0.1); ctx.lineTo(sx+w*0.2, sy-h*0.04); ctx.stroke();
+    // Large kinnera
+    drawKinneraInstrument(ctx, sx-w*0.05, sy-h*0.07, w*1.4, h*1.4, -0.4, alpha);
+    // Musical notes floating up
+    const notes = ['♩','♪','♫','♬'];
+    for (let n = 0; n < 6; n++) {
+      const nx = w*(0.52 + (n%3)*0.1);
+      const ny = h*(0.55 - (n*0.08) - (ts*0.06)%(h*0.01));
+      ctx.fillStyle = `rgba(255,220,60,${alpha*(0.5+0.5*(n%2))})`;
+      ctx.font = `${h*0.07}px serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(notes[n%4], nx, h*(0.62 - n*0.09 - (ts*0.04)%0.5));
+    }
+    ctx.textAlign = 'left';
+    // Audience silhouettes
+    for (let a = 0; a < 5; a++) {
+      ctx.fillStyle = `rgba(10,3,0,${alpha*0.85})`;
+      drawFigure(ctx, w*(0.1+a*0.18), h*0.9, h*0.14, `rgba(10,3,0,${alpha*0.85})`);
+    }
+  }
+
+  // 3 – NALLAMALA HILLS: Majestic hill landscape, river in valley
+  function vis_Nallamala(ctx, w, h, alpha, ts) {
+    // Night sky with gradient
+    const sky = ctx.createLinearGradient(0, 0, 0, h*0.6);
+    sky.addColorStop(0, `rgba(5,3,25,${alpha})`); sky.addColorStop(1, `rgba(10,5,0,${alpha})`);
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+    // Stars
+    ctx.fillStyle = `rgba(255,255,220,${alpha*0.7})`;
+    for (let i = 0; i < 40; i++) { ctx.beginPath(); ctx.arc(((i*79)%100)/100*w, ((i*61)%55)/100*h, 0.8+i%3*0.4, 0, Math.PI*2); ctx.fill(); }
+    // Moon
+    ctx.fillStyle = `rgba(220,220,180,${alpha*0.9})`;
+    ctx.beginPath(); ctx.arc(w*0.82, h*0.15, w*0.08, 0, Math.PI*2); ctx.fill();
+    // Mountain layers – Nallamala
+    drawMountains(ctx, w, h, h*0.85, 4, [
+      `rgba(5,15,3,${alpha})`,  `rgba(8,22,5,${alpha})`,
+      `rgba(15,30,8,${alpha})`, `rgba(25,45,12,${alpha})`
+    ]);
+    // River in valley (silvery curve)
+    ctx.strokeStyle = `rgba(80,120,180,${alpha*0.8})`; ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(0, h*0.75); ctx.bezierCurveTo(w*0.3, h*0.78, w*0.6, h*0.71, w, h*0.76); ctx.stroke();
+    // River shimmer
+    ctx.strokeStyle = `rgba(180,220,255,${alpha*0.4})`; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, h*0.755); ctx.bezierCurveTo(w*0.3, h*0.785, w*0.6, h*0.715, w, h*0.765); ctx.stroke();
+    // Title
+    ctx.fillStyle = `rgba(180,230,120,${alpha*0.85})`; ctx.font = `italic ${h*0.055}px serif`; ctx.textAlign = 'center';
+    ctx.fillText('నల్లమల', w/2, h*0.12); ctx.textAlign = 'left';
+  }
+
+  // 4 – TRIBAL HERO: Sayanna on horseback, hilltop, spear raised, crowd
+  function vis_TribalHero(ctx, w, h, alpha, ts) {
+    ctx.fillStyle = `rgba(5,2,0,${alpha})`; ctx.fillRect(0, 0, w, h);
+    // Dramatic sky – fire-orange glow on horizon
+    const grd = ctx.createLinearGradient(0, h*0.3, 0, h);
+    grd.addColorStop(0, `rgba(5,2,0,0)`); grd.addColorStop(1, `rgba(80,20,0,${alpha*0.6})`);
+    ctx.fillStyle = grd; ctx.fillRect(0, 0, w, h);
+    // Hill silhouette
+    ctx.fillStyle = `rgba(10,4,0,${alpha})`;
+    ctx.beginPath(); ctx.moveTo(0,h); ctx.lineTo(0,h*0.7); ctx.quadraticCurveTo(w*0.4, h*0.4, w*0.5, h*0.42);
+    ctx.quadraticCurveTo(w*0.6, h*0.44, w, h*0.65); ctx.lineTo(w,h); ctx.fill();
+    // Horse silhouette on hill top
+    const hx = w*0.5, hy = h*0.44;
+    ctx.fillStyle = `rgba(15,5,0,${alpha})`;
+    // Horse body
+    ctx.beginPath(); ctx.ellipse(hx, hy, w*0.14, h*0.08, 0, 0, Math.PI*2); ctx.fill();
+    // Horse head
+    ctx.beginPath(); ctx.ellipse(hx+w*0.12, hy-h*0.04, w*0.04, h*0.05, -0.3, 0, Math.PI*2); ctx.fill();
+    // Horse legs (animated gallop)
+    const legSwing = Math.sin(ts*5)*0.15;
+    ctx.strokeStyle = `rgba(15,5,0,${alpha})`; ctx.lineWidth = h*0.025;
+    [[-0.08,-0.07],[0.0,-0.07],[0.04,-0.07],[0.1,-0.07]].forEach(([lx,lz],i) => {
+      const lAngle = legSwing * (i%2===0?1:-1);
+      ctx.beginPath(); ctx.moveTo(hx+lx*w, hy+h*0.06); ctx.lineTo(hx+lx*w+Math.sin(lAngle)*h*0.04, hy+h*0.13); ctx.stroke();
+    });
+    // Rider (Sayanna)
+    ctx.fillStyle = `rgba(150,30,0,${alpha})`;
+    ctx.beginPath(); ctx.ellipse(hx, hy-h*0.1, w*0.05, h*0.09, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(hx, hy-h*0.2, h*0.055, 0, Math.PI*2); ctx.fill(); // head
+    // SPEAR raised high
+    ctx.strokeStyle = `rgba(255,200,50,${alpha})`; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(hx+w*0.03, hy-h*0.14); ctx.lineTo(hx+w*0.1, hy-h*0.45); ctx.stroke();
+    // Spearhead
+    ctx.fillStyle = `rgba(255,220,80,${alpha})`;
+    ctx.beginPath(); ctx.moveTo(hx+w*0.1, hy-h*0.45); ctx.lineTo(hx+w*0.08, hy-h*0.41); ctx.lineTo(hx+w*0.12, hy-h*0.41); ctx.closePath(); ctx.fill();
+    // Crowd below cheering (many small figures)
+    for (let c = 0; c < 9; c++) {
+      const cx2 = w*(0.06+c*0.1);
+      const cy2 = h*(0.78 + (c%3)*0.03);
+      ctx.fillStyle = `rgba(80,20,0,${alpha*0.9})`;
+      drawFigure(ctx, cx2, cy2, h*0.11, `rgba(80,20,0,${alpha*0.9})`);
+      // Raised arm
+      ctx.strokeStyle = `rgba(80,20,0,${alpha})`; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(cx2+4, cy2-h*0.08); ctx.lineTo(cx2+12, cy2-h*0.16); ctx.stroke();
+    }
+    // Glow around spear tip
+    const sg = ctx.createRadialGradient(hx+w*0.1, hy-h*0.45, 0, hx+w*0.1, hy-h*0.45, w*0.07);
+    sg.addColorStop(0, `rgba(255,230,100,${alpha*0.9})`); sg.addColorStop(1, 'rgba(255,100,0,0)');
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(hx+w*0.1, hy-h*0.45, w*0.07, 0, Math.PI*2); ctx.fill();
+  }
+
+  // 5 – VICTORY: Crowd with fists raised, fire torches, "జయ సాయన్న"
+  function vis_Victory(ctx, w, h, alpha, ts) {
+    ctx.fillStyle = `rgba(8,2,0,${alpha})`; ctx.fillRect(0, 0, w, h);
+    // Fire glow from bottom
+    const bg = ctx.createLinearGradient(0, h*0.5, 0, h);
+    bg.addColorStop(0, `rgba(60,10,0,0)`); bg.addColorStop(1, `rgba(180,50,0,${alpha*0.6})`);
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+    // Ground crowd silhouettes with raised fists  
+    const cols = ['rgba(40,10,0,A)', 'rgba(100,25,0,A)', 'rgba(60,15,0,A)'];
+    for (let p = 0; p < 11; p++) {
+      const px = w*(0.05 + p*0.09);
+      const py = h*(0.72 + (p%3)*0.04);
+      const col = cols[p%3].replace('A', `${alpha}`);
+      drawFigure(ctx, px, py, h*0.2, col);
+      // Torch with flame
+      ctx.fillStyle = `rgba(60,20,0,${alpha})`;
+      ctx.fillRect(px+8, py-h*0.33, 4, h*0.16);
+      // Flame
+      ctx.fillStyle = `rgba(255,130,20,${alpha*(0.6+0.4*Math.sin(ts*8+p))})`;
+      ctx.beginPath(); ctx.arc(px+10, py-h*0.35, 7+Math.sin(ts*7+p)*3, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = `rgba(255,220,80,${alpha*(0.7+0.3*Math.sin(ts*12+p))})`;
+      ctx.beginPath(); ctx.arc(px+10, py-h*0.36, 4, 0, Math.PI*2); ctx.fill();
+    }
+    // "జయ సాయన్న" in fire letters
+    ctx.save();
+    ctx.shadowColor = '#FF6600'; ctx.shadowBlur = 30;
+    ctx.fillStyle = `rgba(255,200,60,${alpha})`;
+    ctx.font = `bold ${h*0.1}px 'Noto Serif Telugu', serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('జయ సాయన్న!', w/2, h*0.32);
+    ctx.font = `bold ${h*0.065}px 'Noto Serif Telugu', serif`;
+    ctx.fillText('జయ జయ వీరుడా', w/2, h*0.45);
+    ctx.restore(); ctx.textAlign = 'left';
+  }
+
+  // 6 – VILLAGE FESTIVAL: Women dancing in circle, drummers, lamps
+  function vis_Festival(ctx, w, h, alpha, ts) {
+    ctx.fillStyle = `rgba(5,2,0,${alpha})`; ctx.fillRect(0, 0, w, h);
+    // Warm festival light
+    const fl = ctx.createRadialGradient(w/2, h*0.6, 0, w/2, h*0.6, w*0.5);
+    fl.addColorStop(0, `rgba(80,30,0,${alpha*0.5})`); fl.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = fl; ctx.fillRect(0, 0, w, h);
+    // Decorative lights strung across top
+    const lampColors = ['#FF4444','#FFCC00','#FF8800','#44FF44','#FF44FF'];
+    for (let l = 0; l < 8; l++) {
+      const lx = w*(0.05 + l*0.13);
+      ctx.strokeStyle = `rgba(80,40,0,${alpha*0.6})`; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(lx, h*0.05); ctx.lineTo(lx+w*0.065, h*0.08); ctx.stroke();
+      ctx.fillStyle = lampColors[l%5] + Math.round(alpha*255).toString(16).padStart(2,'0');
+      ctx.beginPath(); ctx.arc(lx+w*0.065, h*0.09, w*0.025, 0, Math.PI*2); ctx.fill();
+    }
+    // Central fire
+    const cfs = ctx.createRadialGradient(w/2, h*0.65, 0, w/2, h*0.65, w*0.12);
+    cfs.addColorStop(0, `rgba(255,220,80,${alpha})`); cfs.addColorStop(0.5, `rgba(255,80,10,${alpha*0.8})`); cfs.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = cfs; ctx.beginPath(); ctx.arc(w/2, h*0.65, w*0.12, 0, Math.PI*2); ctx.fill();
+    // Women dancing in circle (saris)
+    const sariCols = ['#FF4488','#FF8800','#8844FF','#44AAFF','#FF4466','#FFAA00','#44CC44'];
+    for (let d = 0; d < 7; d++) {
+      const da = (d/7)*Math.PI*2 + ts*0.3;
+      const dx = w/2 + Math.cos(da)*w*0.32;
+      const dy = h*0.65 + Math.sin(da)*h*0.22;
+      const col = sariCols[d];
+      // Body
+      ctx.fillStyle = col + Math.round(alpha*255).toString(16).padStart(2,'0');
+      ctx.beginPath(); ctx.arc(dx, dy-h*0.07, h*0.06, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(dx, dy, h*0.05, h*0.1, 0, 0, Math.PI*2); ctx.fill();
+      // Arms raised
+      ctx.strokeStyle = col + Math.round(alpha*200).toString(16).padStart(2,'0'); ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(dx-h*0.04, dy-0.04*h); ctx.lineTo(dx-h*0.1, dy-h*0.14); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(dx+h*0.04, dy-0.04*h); ctx.lineTo(dx+h*0.1, dy-h*0.14); ctx.stroke();
+    }
+    // Drummers
+    for (let dr = 0; dr < 2; dr++) {
+      const drx = w*(0.12 + dr*0.76);
+      ctx.fillStyle = `rgba(60,20,0,${alpha})`;
+      drawFigure(ctx, drx, h*0.82, h*0.14, `rgba(60,20,0,${alpha})`);
+      ctx.fillStyle = `rgba(100,50,10,${alpha*(0.7+0.3*Math.sin(ts*8))})`;
+      ctx.beginPath(); ctx.ellipse(drx, h*0.75, w*0.05, h*0.03, 0, 0, Math.PI*2); ctx.fill();
+    }
+  }
+
+  // 7 – MOUNTAIN ECHO: Kinnera sound waves radiating through peaks
+  function vis_MountainEcho(ctx, w, h, alpha, ts) {
+    ctx.fillStyle = `rgba(3,5,15,${alpha})`; ctx.fillRect(0, 0, w, h);
+    // Stars
+    ctx.fillStyle = `rgba(255,255,200,${alpha*0.6})`;
+    for (let i = 0; i < 25; i++) { ctx.beginPath(); ctx.arc(((i*113)%100)/100*w, ((i*71)%50)/100*h, 0.8, 0, Math.PI*2); ctx.fill(); }
+    // Mountain silhouettes
+    drawMountains(ctx, w, h, h*0.88, 3, [`rgba(5,12,3,${alpha})`, `rgba(10,20,5,${alpha})`, `rgba(20,35,10,${alpha})`]);
+    // Kinnera in center emitting sound
+    drawKinneraInstrument(ctx, w*0.5, h*0.6, w*1.3, h*1.3, -Math.PI/2 + 0.1, alpha*0.9);
+    // Concentric sound wave rings expanding outward
+    for (let r = 0; r < 5; r++) {
+      const rr = (((ts*0.4 + r*0.2) % 1.0)) * w*0.48;
+      const ro = 1.0 - rr/w*0.48*0.9;
+      ctx.strokeStyle = `rgba(255,210,60,${alpha*ro*0.7})`;
+      ctx.lineWidth = 2.5 - r*0.3;
+      ctx.beginPath(); ctx.arc(w*0.5, h*0.6, rr, 0, Math.PI*2); ctx.stroke();
+    }
+    // Birds flying
+    for (let b = 0; b < 5; b++) {
+      const bx = ((ts*0.04 + b*0.2)%1.0) * w;
+      const by = h*(0.15 + b*0.04);
+      ctx.strokeStyle = `rgba(180,180,220,${alpha*0.7})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(bx-8, by); ctx.quadraticCurveTo(bx, by-5, bx+8, by); ctx.stroke();
+    }
+  }
+
+  // 8 – WOUND/SACRIFICE: Sayanna stands wounded but transcendent
+  function vis_Wound(ctx, w, h, alpha, ts) {
+    ctx.fillStyle = `rgba(8,2,2,${alpha})`; ctx.fillRect(0, 0, w, h);
+    // Ocean waves at base
+    ctx.strokeStyle = `rgba(40,80,120,${alpha*0.7})`; ctx.lineWidth = 4;
+    for (let w2 = 0; w2 < 4; w2++) {
+      ctx.beginPath();
+      ctx.moveTo(0, h*(0.82 + w2*0.05));
+      for (let x = 0; x <= w; x += 20) {
+        ctx.lineTo(x, h*(0.82 + w2*0.05) + Math.sin(x*0.04 + ts*1.5 + w2)*h*0.015);
+      }
+      ctx.stroke();
+    }
+    // Sayanna large standing figure
+    const sx = w*0.5, sy = h*0.8;
+    ctx.fillStyle = `rgba(120,30,5,${alpha})`;
+    drawFigure(ctx, sx, sy, h*0.4, `rgba(120,30,5,${alpha})`);
+    // Wound glow
+    const wg = ctx.createRadialGradient(sx+w*0.04, sy-h*0.22, 0, sx+w*0.04, sy-h*0.22, w*0.05);
+    wg.addColorStop(0, `rgba(255,80,80,${alpha})`); wg.addColorStop(1, 'rgba(255,0,0,0)');
+    ctx.fillStyle = wg; ctx.beginPath(); ctx.arc(sx+w*0.04, sy-h*0.22, w*0.05, 0, Math.PI*2); ctx.fill();
+    // Transcendent aura around figure
+    const auG = ctx.createRadialGradient(sx, sy-h*0.2, h*0.05, sx, sy-h*0.2, h*0.3);
+    auG.addColorStop(0, `rgba(255,180,80,${alpha*0.5})`); auG.addColorStop(1, 'rgba(255,100,20,0)');
+    ctx.fillStyle = auG; ctx.beginPath(); ctx.arc(sx, sy-h*0.2, h*0.3, 0, Math.PI*2); ctx.fill();
+    // Blood drops becoming ocean drops  
+    for (let d = 0; d < 6; d++) {
+      ctx.fillStyle = `rgba(180,20,20,${alpha*(0.5+0.5*Math.sin(ts*2+d))})`;
+      ctx.beginPath(); ctx.arc(sx+w*(d*0.05-0.1), sy-h*(0.25-d*0.04), 4+d, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.fillStyle = `rgba(255,180,80,${alpha*0.8})`; ctx.font = `bold ${h*0.055}px serif`; ctx.textAlign = 'center';
+    ctx.fillText('సాయన్న...', w/2, h*0.17); ctx.textAlign = 'left';
+  }
+
+  // 9 – ROOTS OF VALOR: Elder teaching young Sayanna in forest
+  function vis_Valor(ctx, w, h, alpha, ts) {
+    ctx.fillStyle = `rgba(5,3,0,${alpha})`; ctx.fillRect(0, 0, w, h);
+    // Forest background
+    for (let t = 0; t < 6; t++) {
+      const tx = w*(0.05+t*0.18);
+      const th2 = h*(0.3+t%3*0.1);
+      ctx.fillStyle = t%2===0 ? `rgba(5,15,3,${alpha})` : `rgba(8,20,4,${alpha})`;
+      ctx.beginPath(); ctx.moveTo(tx-w*0.06, h); ctx.lineTo(tx, h-th2); ctx.lineTo(tx+w*0.06, h); ctx.fill();
+    }
+    // Elder figure (large, seated, with staff)
+    const ex = w*0.32, ey = h*0.75;
+    ctx.fillStyle = `rgba(80,35,5,${alpha})`;
+    drawFigure(ctx, ex, ey, h*0.22, `rgba(80,35,5,${alpha})`);
+    // White hair/beard on elder
+    ctx.fillStyle = `rgba(200,195,180,${alpha*0.9})`;
+    ctx.beginPath(); ctx.arc(ex, ey-h*0.19, h*0.065, 0, Math.PI*2); ctx.fill(); // white head
+    ctx.beginPath(); ctx.ellipse(ex, ey-h*0.12, h*0.04, h*0.06, 0, 0, Math.PI*2); ctx.fill();
+    // Elder's staff
+    ctx.strokeStyle = `rgba(100,60,20,${alpha})`; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(ex+w*0.05, ey); ctx.lineTo(ex+w*0.07, ey-h*0.35); ctx.stroke();
+    // Young Sayanna (smaller, bowing/learning)
+    const yx = w*0.6, yy = h*0.78;
+    ctx.fillStyle = `rgba(150,40,5,${alpha})`;
+    drawFigure(ctx, yx, yy, h*0.18, `rgba(150,40,5,${alpha})`);
+    // Bowing posture
+    ctx.fillStyle = `rgba(150,40,5,${alpha})`;
+    ctx.beginPath(); ctx.ellipse(yx, yy-h*0.08, h*0.06, h*0.045, 0.5, 0, Math.PI*2); ctx.fill();
+    // Kinnera lying between them
+    drawKinneraInstrument(ctx, w*0.46, yy-h*0.01, w*0.9, h, 0, alpha*0.8);
+    // Knowledge/light rays from elder to young
+    ctx.strokeStyle = `rgba(255,200,80,${alpha*0.4})`; ctx.lineWidth = 2;
+    for (let r = 0; r < 3; r++) {
+      ctx.beginPath(); ctx.moveTo(ex+w*0.04, ey-h*0.1); ctx.lineTo(yx-w*0.04, yy-h*0.1); ctx.stroke();
+    }
+  }
+
+  // 10 – IMMORTAL IN FIRE: Sayanna dissolves into flames, becomes light/stars
+  function vis_Immortal(ctx, w, h, alpha, ts) {
+    ctx.fillStyle = `rgba(5,0,0,${alpha})`; ctx.fillRect(0, 0, w, h);
+    // Massive fire column
+    for (let fl = 0; fl < 8; fl++) {
+      const fa = (fl/8)*Math.PI*2; const fr = w*0.07;
+      const flh = h*(0.35+fl*0.04) + Math.sin(ts*4+fl)*h*0.04;
+      const fg2 = ctx.createLinearGradient(w/2, h, w/2, h-flh);
+      fg2.addColorStop(0, `rgba(255,80,0,${alpha})`);
+      fg2.addColorStop(0.4, `rgba(255,180,20,${alpha*0.7})`);
+      fg2.addColorStop(1, 'rgba(255,255,100,0)');
+      ctx.fillStyle = fg2;
+      ctx.beginPath();
+      ctx.moveTo(w/2 + Math.cos(fa)*fr, h);
+      ctx.quadraticCurveTo(w/2 + Math.cos(fa)*fr*0.5+Math.sin(ts*3+fl)*20, h-flh*0.5, w/2 + Math.cos(fa)*fr*0.1, h-flh);
+      ctx.quadraticCurveTo(w/2 + Math.cos(fa+0.5)*fr*0.3, h-flh*0.5, w/2 + Math.cos(fa+1)*fr, h);
+      ctx.fill();
+    }
+    // Sayanna figure becoming light – dissolving upward
+    const dissolve = (Math.sin(ts*0.5)+1)*0.5; // 0→1 pulsing
+    const sx = w*0.5, sy = h*0.62;
+    ctx.globalAlpha = alpha * (0.6 - dissolve*0.3);
+    ctx.fillStyle = '#FF8800';
+    drawFigure(ctx, sx, sy, h*0.26, '#FF8800');
+    ctx.globalAlpha = alpha;
+    // Particles of light shooting upward from dissolving figure
+    for (let p = 0; p < 20; p++) {
+      const px = sx + Math.sin(p*2.1)*w*0.12;
+      const py = sy - h*0.15 - ((ts*0.12 + p*0.07)%1.0)*h*0.5;
+      const pr = 3 + p%4;
+      const pg2 = ctx.createRadialGradient(px, py, 0, px, py, pr*2);
+      pg2.addColorStop(0, `rgba(255,255,180,${alpha})`);
+      pg2.addColorStop(1, 'rgba(255,180,20,0)');
+      ctx.fillStyle = pg2; ctx.beginPath(); ctx.arc(px, py, pr*2, 0, Math.PI*2); ctx.fill();
+    }
+    // Stars appearing (Sayanna becomes stars)
+    ctx.fillStyle = `rgba(255,255,220,${alpha*0.9})`;
+    for (let s = 0; s < 12; s++) {
+      const sa = (ts*0.1 + s*0.5) % (Math.PI*2);
+      const sx2 = w*0.5 + Math.cos(sa + s)*w*(0.15+s*0.02);
+      const sy2 = h*0.2 + Math.sin(sa*0.7 + s)*h*0.15;
+      ctx.beginPath(); ctx.arc(sx2, sy2, 2+s%3, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.fillStyle = `rgba(255,240,180,${alpha*0.9})`; ctx.font = `bold ${h*0.07}px serif`; ctx.textAlign = 'center';
+    ctx.fillText('అమరుడు', w/2, h*0.12); ctx.textAlign = 'left';
+  }
+
+  // 11 – HEARTS MELTING: People with hands on hearts, kinnera light
+  function vis_Hearts(ctx, w, h, alpha, ts) {
+    const bg = ctx.createRadialGradient(w/2, h*0.5, 0, w/2, h*0.5, w*0.6);
+    bg.addColorStop(0, `rgba(30,5,0,${alpha})`); bg.addColorStop(1, `rgba(5,0,8,${alpha})`);
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+    // Kinnera glowing in center top
+    drawKinneraInstrument(ctx, w*0.5, h*0.25, w*1.1, h*1.1, -Math.PI/2+0.05, alpha*0.85);
+    // Radial light rays from kinnera
+    for (let r = 0; r < 8; r++) {
+      const ra = (r/8)*Math.PI*2;
+      ctx.strokeStyle = `rgba(255,180,50,${alpha*0.15})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(w*0.5, h*0.25); ctx.lineTo(w*0.5+Math.cos(ra)*w*0.5, h*0.25+Math.sin(ra)*h*0.5); ctx.stroke();
+    }
+    // People with hands on hearts
+    for (let p = 0; p < 6; p++) {
+      const px = w*(0.1 + p*0.16);
+      const py = h*(0.75 + (p%2)*0.05);
+      const pcol = `rgba(${100+p*15},${20+p*5},0,${alpha})`;
+      drawFigure(ctx, px, py, h*0.19, pcol);
+      // Hand on heart (small circle glow)
+      const hpx = px + (p%2===0?3:-3);
+      const hpy = py - h*0.1;
+      const hg2 = ctx.createRadialGradient(hpx, hpy, 0, hpx, hpy, 12);
+      hg2.addColorStop(0, `rgba(255,100,100,${alpha*0.9})`); hg2.addColorStop(1, 'rgba(255,0,0,0)');
+      ctx.fillStyle = hg2; ctx.beginPath(); ctx.arc(hpx, hpy, 12, 0, Math.PI*2); ctx.fill();
+    }
+    // Golden teardrop music notes floating up
+    ctx.fillStyle = `rgba(255,220,60,${alpha*0.8})`; ctx.font = `${h*0.08}px serif`; ctx.textAlign = 'center';
+    for (let n = 0; n < 4; n++) {
+      const ny = h*(0.55 - ((ts*0.08+n*0.25)%0.5));
+      ctx.globalAlpha = alpha * (0.5 + 0.5*Math.sin(ts*2+n));
+      ctx.fillText(['♪','♫','♬','♩'][n], w*(0.25+n*0.17), ny);
+    }
+    ctx.globalAlpha = 1; ctx.textAlign = 'left';
+  }
+
+  // 12 – NALLAMALA MOTHER: Forest goddess, nature's spirit
+  function vis_NallamalaGoddess(ctx, w, h, alpha, ts) {
+    ctx.fillStyle = `rgba(2,5,2,${alpha})`; ctx.fillRect(0, 0, w, h);
+    // Dense forest
+    for (let t = 0; t < 8; t++) {
+      const tx = w*(t/7);
+      ctx.fillStyle = t%2===0 ? `rgba(3,15,2,${alpha})` : `rgba(5,20,3,${alpha})`;
+      ctx.beginPath(); ctx.moveTo(tx-w*0.04, h); ctx.lineTo(tx, h*0.3); ctx.lineTo(tx+w*0.04, h); ctx.fill();
+    }
+    // Goddess aura
+    const gg = ctx.createRadialGradient(w/2, h*0.45, 0, w/2, h*0.45, w*0.4);
+    gg.addColorStop(0, `rgba(80,200,60,${alpha*0.6})`); gg.addColorStop(0.4, `rgba(20,80,10,${alpha*0.3})`); gg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(w/2, h*0.45, w*0.4, 0, Math.PI*2); ctx.fill();
+    // Goddess figure (green tones)
+    ctx.fillStyle = `rgba(40,160,30,${alpha*0.9})`;
+    drawFigure(ctx, w/2, h*0.72, h*0.3, `rgba(40,160,30,${alpha*0.9})`);
+    // Flowing hair/vines
+    ctx.strokeStyle = `rgba(30,120,20,${alpha*0.8})`; ctx.lineWidth = 4;
+    for (let v = -2; v <= 2; v++) {
+      ctx.beginPath();
+      ctx.moveTo(w/2 + v*15, h*0.42);
+      ctx.bezierCurveTo(w/2 + v*20 + Math.sin(ts+v)*10, h*0.55, w/2 + v*25, h*0.62, w/2 + v*30, h*0.72);
+      ctx.stroke();
+    }
+    // Animals bowing – tiger & deer silhouettes
+    ctx.fillStyle = `rgba(120,50,10,${alpha})`; // tiger
+    ctx.beginPath(); ctx.ellipse(w*0.22, h*0.8, w*0.09, h*0.04, -0.2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(w*0.78, h*0.8, w*0.07, h*0.05, 0.2, 0, Math.PI*2); ctx.fill();
+    // Nallamala title
+    ctx.fillStyle = `rgba(120,255,80,${alpha*0.85})`; ctx.font = `bold ${h*0.065}px 'Noto Serif Telugu', serif`; ctx.textAlign = 'center';
+    ctx.fillText('నల్లమల తల్లి', w/2, h*0.15); ctx.textAlign = 'left';
+  }
+
+  // 13 – CLOSING: Sayanna on horse silhouette riding into moonlit horizon
+  function vis_Closing(ctx, w, h, alpha, ts) {
+    // Dusk sky
+    const sky = ctx.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, `rgba(5,3,20,${alpha})`); sky.addColorStop(0.5, `rgba(30,8,0,${alpha})`); sky.addColorStop(1, `rgba(60,20,0,${alpha})`);
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+    // Horizon glow
+    const hg2 = ctx.createRadialGradient(w/2, h*0.68, 0, w/2, h*0.68, w*0.45);
+    hg2.addColorStop(0, `rgba(255,100,20,${alpha*0.35})`); hg2.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = hg2; ctx.fillRect(0, 0, w, h);
+    // Moon large  
+    const moonG = ctx.createRadialGradient(w*0.5, h*0.25, 0, w*0.5, h*0.25, w*0.16);
+    moonG.addColorStop(0, `rgba(230,225,180,${alpha})`); moonG.addColorStop(0.8, `rgba(200,195,150,${alpha*0.85})`); moonG.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = moonG; ctx.beginPath(); ctx.arc(w*0.5, h*0.25, w*0.16, 0, Math.PI*2); ctx.fill();
+    // Ground silhouette
+    ctx.fillStyle = `rgba(8,3,0,${alpha})`;
+    ctx.fillRect(0, h*0.7, w, h*0.3);
+    // Rider moving across — animated
+    const rx = (ts*0.05 % 1.3) * w - w*0.1;
+    const ry = h*0.7;
+    // Horse silhouette
+    ctx.fillStyle = `rgba(15,5,0,${alpha})`;
+    ctx.beginPath(); ctx.ellipse(rx, ry-h*0.05, w*0.1, h*0.05, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(rx+w*0.09, ry-h*0.1, w*0.03, h*0.06, -0.3, 0, Math.PI*2); ctx.fill();
+    // Rider  
+    ctx.beginPath(); ctx.ellipse(rx, ry-h*0.13, w*0.035, h*0.075, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(rx, ry-h*0.21, h*0.04, 0, Math.PI*2); ctx.fill();
+    // Kinnera held up
+    ctx.strokeStyle = `rgba(200,150,30,${alpha*0.9})`; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(rx-w*0.03, ry-h*0.18); ctx.lineTo(rx-w*0.08, ry-h*0.3); ctx.stroke();
+    // Closing text  
+    ctx.fillStyle = `rgba(255,200,80,${alpha*0.85})`; ctx.font = `bold ${h*0.065}px 'Noto Serif Telugu', serif`; ctx.textAlign = 'center';
+    ctx.fillText('పండుగ సాయన్న...', w/2, h*0.93); ctx.textAlign = 'left';
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  LYRICS SYSTEM — also drives vision changes
+  // ═══════════════════════════════════════════════════════════════
+  function updateLyrics(elapsedSec) {
+    const lMain = document.getElementById('lyric-main');
+    const lTr   = document.getElementById('lyric-tr');
+
+    // Find current lyric index
+    let newIdx = 0;
+    for (let i = LYRICS.length-1; i >= 0; i--) {
+      if (elapsedSec >= LYRICS[i].time) { newIdx = i; break; }
+    }
+
+    const cur = LYRICS[newIdx];
+    if (!cur) return;
+
+    if (newIdx !== lyricIdx) {
+      lyricIdx = newIdx;
+      // Sync vision to lyric
+      currentVision = newIdx % STORY_VISIONS.length;
+      visionTimer = 0;  // reset fade-in for new vision
+
+      lMain.setAttribute('data-line', cur.te);
+      lTr.setAttribute('data-line',   cur.tr);
+      lMain.classList.remove('active'); lMain.classList.add('fading');
+      lTr.classList.remove('active');   lTr.classList.add('fading');
+      setTimeout(() => {
+        lMain.textContent = cur.te;
+        lTr.textContent   = cur.tr;
+        lMain.classList.remove('fading'); lMain.classList.add('active');
+        lTr.classList.remove('fading');   lTr.classList.add('active');
+      }, 400);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  ANIMATE LOOP
+  // ═══════════════════════════════════════════════════════════════
+  function animate() {
+    requestAnimationFrame(animate);
+    const t = performance.now();
+    const delta = Math.min((t - prevTime) / 1000, 0.1);
+    prevTime = t;
+    const ts = t * 0.001; // seconds
+
+    // ── Movement ──
+    if (controls.isLocked) {
+      velocity.x -= velocity.x * 10 * delta;
+      velocity.z -= velocity.z * 10 * delta;
+      direction.z = Number(moveForward)  - Number(moveBackward);
+      direction.x = Number(moveRight)    - Number(moveLeft);
+      direction.normalize();
+      const spd = 30;
+      if (moveForward || moveBackward) velocity.z -= direction.z * spd * delta;
+      if (moveLeft    || moveRight)    velocity.x -= direction.x * spd * delta;
+      controls.moveRight(-velocity.x * delta);
+      controls.moveForward(-velocity.z * delta);
+      // Boundaries
+      const p = controls.getObject().position;
+      p.x = Math.max(-40, Math.min(40, p.x));
+      p.z = Math.max(-50, Math.min(30, p.z));
+      p.y = 1.65;
+    }
+
+    // ── Fire flicker ──
+    const flicker = 1 + Math.sin(ts*7)*0.22 + Math.sin(ts*13)*0.12 + Math.sin(ts*3.7)*0.18;
+    if (fireLight)  fireLight.intensity  = 3.2 * flicker;
+    if (fireLight2) fireLight2.intensity = 1.3 * Math.sin(ts*9+1)*0.3 + 0.7;
+    // Color shift (orange→yellow)
+    if (fireLight) {
+      const r = 1, g = 0.3 + 0.2*Math.sin(ts*5), b = 0.0;
+      fireLight.color.setRGB(r, g, b);
+    }
+
+    // ── Fire particles ──
+    const fpBuf = fireParticles.geometry.attributes.position;
+    const fColBuf = fireParticles.geometry.attributes.color;
+    for (let i = 0; i < NUM_FIRE_PARTICLES; i++) {
+      // Advance
+      const px = fpBuf.getX(i) + fireVelocities[i].x + Math.sin(ts*3 + i)*0.003;
+      const py = fpBuf.getY(i) + fireVelocities[i].y;
+      const pz = fpBuf.getZ(i) + fireVelocities[i].z + Math.cos(ts*2.5 + i)*0.003;
+      // Reset if too high
+      if (py > 2.0 || Math.abs(px) > 0.8 || Math.abs(pz) > 0.8) {
+        const spread = 0.3;
+        fpBuf.setXYZ(i, (Math.random()-0.5)*spread, 0.05, (Math.random()-0.5)*spread);
+        fColBuf.setXYZ(i, 1, 0.2 + Math.random()*0.4, 0);
+      } else {
+        fpBuf.setXYZ(i, px, py, pz);
+        // Cool down from orange→yellow
+        const yFrac = py / 2.0;
+        fColBuf.setXYZ(i, 1, 0.2 + yFrac*0.7, yFrac * 0.05);
+      }
+    }
+    fpBuf.needsUpdate = true;
+    fColBuf.needsUpdate = true;
+
+    // ── Smoke particles ──
+    const spBuf = smokeParticles.geometry.attributes.position;
+    for (let i = 0; i < NUM_SMOKE_PARTICLES; i++) {
+      const sy = spBuf.getY(i) + 0.008;
+      const sx = spBuf.getX(i) + Math.sin(ts*0.8 + i*0.6)*0.005;
+      const sz = spBuf.getZ(i) + Math.cos(ts*0.6 + i*0.7)*0.005;
+      if (sy > 7) { spBuf.setXYZ(i, (Math.random()-0.5)*0.6, 1.0, (Math.random()-0.5)*0.6); }
+      else         { spBuf.setXYZ(i, sx, sy, sz); }
+    }
+    spBuf.needsUpdate = true;
+
+    // ── Vision/magical sparks ──
+    const vpBuf = visionParticles.geometry.attributes.position;
+    for (let i = 0; i < NUM_VISION_PARTICLES; i++) {
+      const vy = vpBuf.getY(i) + 0.02 + Math.sin(ts + i)*0.004;
+      const vx = vpBuf.getX(i) + Math.sin(ts*1.5 + i*0.8)*0.008;
+      const vz = vpBuf.getZ(i) + Math.cos(ts*1.2 + i*0.9)*0.008;
+      if (vy > 3.5) { vpBuf.setXYZ(i, (Math.random()-0.5)*0.4, 0.2, (Math.random()-0.5)*0.4); }
+      else           { vpBuf.setXYZ(i, vx, vy, vz); }
+    }
+    vpBuf.needsUpdate = true;
+
+    // ── Horse Orbit around Fire ───────────────────────────────
+    if (horseGroup) {
+      orbitAngle += ORBIT_SPEED * delta;
+      // Position on orbit circle
+      horseGroup.position.x = Math.cos(orbitAngle) * ORBIT_RADIUS;
+      horseGroup.position.z = FIRE_CENTER_Z + Math.sin(orbitAngle) * ORBIT_RADIUS;
+      // Horse faces tangent direction (CCW): local +Z = forward
+      horseGroup.rotation.y = -orbitAngle;
+      // Walking bounce
+      horseGroup.position.y = Math.abs(Math.sin(ts * 3.5)) * 0.07;
+      // Gentle head nod
+      const horseBody = horseGroup.children[0];
+      if (horseBody) horseBody.rotation.x = Math.sin(ts * 3.5) * 0.04;
+    }
+
+    // ── Singer animation (body sway + plucking arm) ──────────
+    if (singerGroup) {
+      singerGroup.rotation.z = Math.sin(ts*1.5)*0.055;
+      singerGroup.rotation.x = Math.sin(ts*0.9)*0.04;
+      // Right arm plucking rhythm
+      if (singerGroup.userData.rightArm) {
+        singerGroup.userData.rightArm.rotation.z = 1.1 + Math.sin(ts*4)*0.18;
+      }
+      if (singerGroup.userData.rHand) {
+        singerGroup.userData.rHand.position.z = 0.46 + Math.sin(ts*4)*0.04;
+      }
+      // Kinnera glow pulse
+      if (singerGroup.userData.kinGlow) {
+        singerGroup.userData.kinGlow.intensity = 0.4 + Math.sin(ts*2.5)*0.25;
+      }
+      if (singerGroup.userData.glowMat) {
+        singerGroup.userData.glowMat.opacity = 0.04 + Math.sin(ts*2)*0.025;
+      }
+    }
+
+    // ── Villagers dancing ──
+    if (window.villagers) {
+      window.villagers.forEach(v => {
+        const ph = v.userData.phase;
+        const sp = v.userData.speed;
+        v.position.y = Math.abs(Math.sin(ts*sp + ph))*0.25;
+        v.rotation.z = Math.sin(ts*(sp*0.5) + ph)*0.18;
+        if (v.userData.la) v.userData.la.rotation.z = Math.sin(ts*sp+ph)*0.6;
+        if (v.userData.ra) v.userData.ra.rotation.z = -Math.sin(ts*sp+ph)*0.6;
+      });
+    }
+
+    // ── Story Canvas Vision – syncs with lyric index ─────────
+    // visionTimer drives the fade-in/out envelope for each vision
+    if (songPlaying) {
+      visionTimer += delta * 1000;
+      if (visionTimer > visionCycleLen) visionTimer = visionCycleLen; // clamp, lyric change resets
+    } else {
+      // Before song: slowly cycle visions as preview
+      visionTimer += delta * 1000;
+      if (visionTimer > visionCycleLen) { visionTimer = 0; currentVision = (currentVision+1)%STORY_VISIONS.length; }
+    }
+    // Fade envelope: sin ramp-in for first half, sustain at 1, ramp-out in last 500ms
+    const vPhase = Math.min(1, visionTimer / visionCycleLen);
+    const fadeIn  = Math.min(1, visionTimer / 1200);           // 1.2s fade in
+    const fadeOut = visionTimer > visionCycleLen - 500 ? (visionCycleLen - visionTimer)/500 : 1;
+    visionAlpha = fadeIn * fadeOut * 0.88;
+
+    // Project fire to screen and draw story canvas
+    const fp = projectFireToScreen();
+    if (fp.visible && visionAlpha > 0.01) {
+      // Vision grows slightly with breathing – use fixed canvas and CSS scale
+      const sz = 380;
+      if (storyCanvas.width !== sz) { storyCanvas.width = sz; storyCanvas.height = sz; }
+      storyCanvas.style.left    = (fp.x - sz/2) + 'px';
+      storyCanvas.style.top     = (fp.y - sz*1.7) + 'px';
+      storyCanvas.style.opacity = visionAlpha;
+      storyCanvas.style.transform = `scale(${0.85 + Math.sin(ts*1.2)*0.06})`;
+      sCtx.clearRect(0, 0, sz, sz);
+      // Fiery border glow
+      const brdr = sCtx.createRadialGradient(sz/2, sz/2, sz*0.3, sz/2, sz/2, sz*0.5);
+      brdr.addColorStop(0, 'rgba(0,0,0,0)');
+      brdr.addColorStop(0.7, `rgba(200,80,0,${visionAlpha*0.25})`);
+      brdr.addColorStop(1,   `rgba(255,120,0,${visionAlpha*0.5})`);
+      sCtx.fillStyle = brdr;
+      sCtx.beginPath(); sCtx.arc(sz/2, sz/2, sz/2, 0, Math.PI*2); sCtx.fill();
+      // Draw the narrative vision (pass ts for animation)
+      STORY_VISIONS[currentVision].draw(sCtx, sz, sz, Math.min(1, visionAlpha * 1.3), ts);
+    } else {
+      storyCanvas.style.opacity   = 0;
+      storyCanvas.style.transform = 'scale(1)';
+    }
+
+    // ── Lyrics ──
+    if (songPlaying) {
+      const elapsed = (t - songStartTime) / 1000;
+      updateLyrics(elapsed);
+    }
+
+    // ── HUD Distance ──
+    if (controls.isLocked) {
+      const pos = controls.getObject().position;
+      const dist = Math.sqrt(pos.x*pos.x + (pos.z+4)*(pos.z+4));
+      const hudEl = document.getElementById('hud-dist');
+      if (dist < 4) {
+        hudEl.innerHTML = `🔥 <em>Kinnera echoes through the fire...</em>`;
+      } else {
+        hudEl.innerHTML = `🔥 ${dist.toFixed(1)}m to the fire`;
+      }
+    }
+
+    renderer.render(scene, camera);
+  }
+  </script>
+</body>
+</html>

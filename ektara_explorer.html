@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Baul Ektara Sound Explorer</title>
+  <meta name="description" content="Experience the mystical sounds of the Baul Ektara through an interactive sound explorer with 5 unique sonic pads." />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ===== CSS RESET & TOKENS ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold-bright:   #FFD166;
+      --gold-warm:     #E8A100;
+      --gold-deep:     #B07000;
+      --amber:         #FF9500;
+      --copper:        #C87941;
+      --bg-void:       #080510;
+      --bg-deep:       #0D0A1A;
+      --bg-card:       rgba(20, 14, 35, 0.85);
+      --blue-cosmic:   #1A1040;
+      --teal-glow:     #00C9B1;
+      --violet:        #6C3FCE;
+      --pad1-color:    #FFB347;
+      --pad2-color:    #00C9B1;
+      --pad3-color:    #9B59B6;
+      --pad4-color:    #3498DB;
+      --pad5-color:    #E74C3C;
+      --text-light:    #F5ECD7;
+      --text-muted:    #9B8A70;
+      --border-gold:   rgba(232, 161, 0, 0.35);
+      --glow-gold:     0 0 20px rgba(255, 193, 7, 0.5),
+                       0 0 60px rgba(255, 152, 0, 0.3);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg-void);
+      color: var(--text-light);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ===== STARFIELD BACKGROUND ===== */
+    #stars-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ===== DECORATIVE BORDER FRAME ===== */
+    .page-frame {
+      position: fixed;
+      inset: 10px;
+      border: 2px solid var(--border-gold);
+      border-radius: 16px;
+      pointer-events: none;
+      z-index: 1;
+      box-shadow: inset 0 0 60px rgba(232, 161, 0, 0.05);
+    }
+    .frame-corner {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border-color: var(--gold-warm);
+      border-style: solid;
+    }
+    .frame-corner.tl { top: -2px; left: -2px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+    .frame-corner.tr { top: -2px; right: -2px; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+    .frame-corner.bl { bottom: -2px; left: -2px; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+    .frame-corner.br { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+    /* ===== MAIN WRAPPER ===== */
+    .wrapper {
+      position: relative;
+      z-index: 2;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ===== HEADER ===== */
+    header {
+      text-align: center;
+      padding: 36px 20px 20px;
+    }
+    .header-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, rgba(232,161,0,0.2), rgba(255,148,0,0.1));
+      border: 1px solid var(--border-gold);
+      border-radius: 100px;
+      padding: 4px 18px;
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.25em;
+      color: var(--gold-warm);
+      margin-bottom: 14px;
+      text-transform: uppercase;
+    }
+    header h1 {
+      font-family: 'Cinzel', serif;
+      font-weight: 800;
+      font-size: clamp(1.6rem, 4vw, 2.8rem);
+      background: linear-gradient(135deg, var(--gold-bright) 0%, var(--amber) 50%, var(--copper) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+      text-shadow: none;
+      margin-bottom: 8px;
+    }
+    header h1 span {
+      display: block;
+      font-size: 0.55em;
+      letter-spacing: 0.3em;
+      font-weight: 600;
+      color: var(--text-muted);
+      -webkit-text-fill-color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .subtitle {
+      font-family: 'Crimson Text', serif;
+      font-style: italic;
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+
+    /* ===== MAIN STAGE ===== */
+    .stage {
+      width: 100%;
+      max-width: 1200px;
+      padding: 20px 24px 40px;
+      display: grid;
+      grid-template-columns: 280px 1fr 280px;
+      grid-template-rows: auto auto;
+      gap: 16px;
+      align-items: center;
+    }
+
+    /* ===== PAD CARDS ===== */
+    .pad {
+      position: relative;
+      border-radius: 14px;
+      padding: 18px;
+      background: var(--bg-card);
+      border: 1px solid rgba(255,255,255,0.07);
+      cursor: pointer;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+      user-select: none;
+    }
+    .pad::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 14px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .pad:hover { transform: translateY(-3px) scale(1.02); }
+    .pad:active { transform: scale(0.97); }
+    .pad.is-active { animation: pad-pulse 0.5s ease; }
+
+    .pad-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      font-weight: 600;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+    .pad-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .pad-desc {
+      font-family: 'Crimson Text', serif;
+      font-style: italic;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Pad visual areas */
+    .pad-visual {
+      height: 60px;
+      position: relative;
+      margin-bottom: 12px;
+      overflow: hidden;
+      border-radius: 8px;
+    }
+    .pad-visual canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Individual pad color themes */
+    #pad1 { --c: var(--pad1-color); }
+    #pad2 { --c: var(--pad2-color); }
+    #pad3 { --c: var(--pad3-color); }
+    #pad4 { --c: var(--pad4-color); }
+    #pad5 { --c: var(--pad5-color); }
+
+    .pad { --c: #888; }
+    .pad:hover {
+      border-color: var(--c);
+      box-shadow: 0 0 20px color-mix(in srgb, var(--c) 40%, transparent),
+                  0 8px 32px rgba(0,0,0,0.5);
+    }
+    .pad.is-active {
+      animation: pad-pulse 0.4s ease;
+    }
+    /* Persistent glow while a pad is playing */
+    .pad.is-playing {
+      border-color: var(--c) !important;
+      box-shadow: 0 0 28px color-mix(in srgb, var(--c) 55%, transparent),
+                  0 0 70px color-mix(in srgb, var(--c) 22%, transparent),
+                  inset 0 0 16px color-mix(in srgb, var(--c) 8%, transparent);
+    }
+    .pad.is-playing .pad-label,
+    .pad.is-playing .pad-title { text-shadow: 0 0 12px currentColor; }
+    .pad-label { color: var(--c); }
+    .pad-title { color: var(--c); }
+
+    @keyframes pad-pulse {
+      0%   { transform: scale(1); }
+      30%  { transform: scale(1.04); }
+      60%  { transform: scale(0.98); }
+      100% { transform: scale(1); }
+    }
+
+    /* ===== LIVE BADGE ===== */
+    .pad-live-badge {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      display: none;
+      align-items: center;
+      gap: 5px;
+      background: color-mix(in srgb, var(--c) 18%, transparent);
+      border: 1px solid color-mix(in srgb, var(--c) 70%, transparent);
+      border-radius: 100px;
+      padding: 3px 10px 3px 7px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--c);
+      text-transform: uppercase;
+      z-index: 5;
+      pointer-events: none;
+    }
+    .pad-live-badge .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--c);
+      animation: live-blink 0.9s ease-in-out infinite;
+    }
+    @keyframes live-blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.2; }
+    }
+    .pad.is-playing .pad-live-badge { display: flex; }
+
+    /* ===== CLICK HINT ===== */
+    .click-hint {
+      position: absolute;
+      bottom: 8px;
+      right: 12px;
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      color: var(--c);
+      opacity: 0.5;
+      text-transform: uppercase;
+      transition: opacity 0.3s, transform 0.2s;
+    }
+    .pad:hover .click-hint { opacity: 1; }
+    .pad.is-playing .click-hint { opacity: 1; content: '■ Stop'; }
+
+    /* ===== CENTER COLUMN ===== */
+    .center-col {
+      grid-column: 2 / 3;
+      grid-row: 1 / 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    /* ===== EKTARA STAGE ===== */
+    .ektara-stage {
+      position: relative;
+      width: 300px;
+      height: 340px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ektara-aura {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(232,161,0,0.18) 0%, rgba(255,148,0,0.1) 40%, transparent 70%);
+      animation: aura-breathe 3s ease-in-out infinite;
+    }
+    @keyframes aura-breathe {
+      0%, 100% { transform: scale(1); opacity: 0.8; }
+      50%       { transform: scale(1.1); opacity: 1; }
+    }
+    .ektara-img {
+      position: relative;
+      width: 220px;
+      height: auto;
+      filter: drop-shadow(0 0 24px rgba(232,161,0,0.6))
+              drop-shadow(0 4px 16px rgba(0,0,0,0.8));
+      animation: float 4s ease-in-out infinite;
+      cursor: pointer;
+      transition: filter 0.3s;
+    }
+    .ektara-img:hover {
+      filter: drop-shadow(0 0 40px rgba(255,193,7,0.9))
+              drop-shadow(0 4px 24px rgba(0,0,0,0.9));
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(-2deg); }
+      50%       { transform: translateY(-12px) rotate(2deg); }
+    }
+
+    /* String vibration overlay */
+    #string-canvas {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    /* ===== RIPPLE RINGS ===== */
+    .ripple-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid var(--gold-warm);
+      opacity: 0;
+      animation: ripple-expand 2s ease-out infinite;
+    }
+    .ripple-ring:nth-child(1) { width: 100px; height: 100px; animation-delay: 0s; }
+    .ripple-ring:nth-child(2) { width: 160px; height: 160px; animation-delay: 0.6s; }
+    .ripple-ring:nth-child(3) { width: 220px; height: 220px; animation-delay: 1.2s; }
+    @keyframes ripple-expand {
+      0%   { opacity: 0.5; transform: scale(0.8); }
+      100% { opacity: 0; transform: scale(1.3); }
+    }
+
+    /* ===== CLICK INDICATOR ===== */
+    .click-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(232,161,0,0.12);
+      border: 1px solid var(--border-gold);
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      color: var(--gold-warm);
+      text-transform: uppercase;
+      animation: blink-hint 2s ease-in-out infinite;
+    }
+    .click-indicator .arrow { font-size: 1rem; }
+    @keyframes blink-hint {
+      0%, 100% { opacity: 0.7; }
+      50%       { opacity: 1; }
+    }
+
+    /* ===== LEFT / RIGHT GRID COLUMNS ===== */
+    .left-col  { grid-column: 1; display: flex; flex-direction: column; gap: 16px; }
+    .right-col { grid-column: 3; display: flex; flex-direction: column; gap: 16px; }
+
+    /* ===== TOP PAD 1 ===== */
+    .top-pad-wrapper {
+      grid-column: 2;
+      grid-row: 1;
+      /* handled by center-col flex */
+    }
+
+    /* ===== WAVEFORM VISUALIZER BOTTOM ===== */
+    .visualizer-bar {
+      width: 100%;
+      max-width: 1200px;
+      padding: 0 24px 20px;
+    }
+    .viz-container {
+      background: rgba(10, 6, 20, 0.7);
+      border: 1px solid var(--border-gold);
+      border-radius: 14px;
+      padding: 16px;
+      backdrop-filter: blur(8px);
+    }
+    .viz-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.25em;
+      color: var(--gold-deep);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+    #main-visualizer {
+      width: 100%;
+      height: 70px;
+      display: block;
+    }
+
+    /* ===== FOOTER ===== */
+    footer {
+      padding: 16px 24px 28px;
+      text-align: center;
+      font-family: 'Crimson Text', serif;
+      font-style: italic;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+    }
+    .footer-divider {
+      width: 80px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold-deep), transparent);
+      margin: 0 auto 12px;
+    }
+
+    /* ===== STATUS BAR ===== */
+    #status-bar {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 6, 20, 0.92);
+      border: 1px solid var(--border-gold);
+      border-radius: 100px;
+      padding: 8px 24px;
+      font-size: 0.78rem;
+      color: var(--gold-warm);
+      letter-spacing: 0.1em;
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      backdrop-filter: blur(12px);
+      white-space: nowrap;
+    }
+    #status-bar.visible { opacity: 1; }
+
+    /* ===== KEYBOARD HINT ===== */
+    .key-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 5px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: rgba(255,255,255,0.05);
+      margin-right: 4px;
+      color: var(--gold-bright);
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+      .stage {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto;
+      }
+      .center-col { grid-column: 1 / -1; order: -1; }
+      .left-col  { grid-column: 1; }
+      .right-col { grid-column: 2; }
+    }
+    @media (max-width: 560px) {
+      .stage {
+        grid-template-columns: 1fr;
+      }
+      .left-col, .right-col { grid-column: 1; }
+    }
+
+    /* ===== ACTIVE GLOW PULSE ===== */
+    .glow-burst {
+      position: absolute;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      pointer-events: none;
+      background: radial-gradient(circle, white 0%, transparent 70%);
+      animation: burst 0.5s ease-out forwards;
+      z-index: 10;
+    }
+    @keyframes burst {
+      from { opacity: 0.9; transform: scale(0); }
+      to   { opacity: 0; transform: scale(6); }
+    }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--gold-deep); border-radius: 3px; }
+  </style>
+</head>
+<body>
+<!-- INJECTED BACK NAVIGATION -->
+<div id="exhib-back-btn" style="position:fixed; top:20px; left:20px; z-index:999999;">
+<a href="index.html" style="background:rgba(15,10,25,0.75); border:1px solid rgba(232,161,0,0.3); color:#F5ECD7; text-decoration:none; padding:8px 16px; border-radius:100px; font-family:sans-serif; font-size:0.85rem; font-weight:500; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); display:flex; align-items:center; gap:8px; box-shadow:0 4px 20px rgba(0,0,0,0.5); transition:all 0.3s ease; text-transform:uppercase; letter-spacing:0.1em;" onmouseover="this.style.background='rgba(232,161,0,0.25)'; this.style.borderColor='#E8A100';" onmouseout="this.style.background='rgba(15,10,25,0.75)'; this.style.borderColor='rgba(232,161,0,0.3)';">
+   <span style="font-size:1.2em; margin-top:-2px;">&#10229;</span> Exhibition Hub
+</a>
+</div>
+
+
+<!-- Starfield -->
+<canvas id="stars-canvas"></canvas>
+
+<!-- Decorative frame -->
+<div class="page-frame">
+  <div class="frame-corner tl"></div>
+  <div class="frame-corner tr"></div>
+  <div class="frame-corner bl"></div>
+  <div class="frame-corner br"></div>
+</div>
+
+<!-- Main wrapper -->
+<div class="wrapper">
+
+  <!-- Header -->
+  <header>
+    <div class="header-badge">✦ Baul Mystic Instrument ✦</div>
+    <h1>
+      INTERACTIVE BAUL EKTARA<br>
+      SOUND EXPLORER
+      <span>Visualizing the Voice of the One String</span>
+    </h1>
+    <p class="subtitle">Click a pad — or press keys 1–5 — to awaken the soul of the Ektara</p>
+  </header>
+
+  <!-- Stage grid -->
+  <div class="stage">
+
+    <!-- LEFT COLUMN: PAD 5 (top) + PAD 4 (bottom) -->
+    <div class="left-col">
+
+      <!-- PAD 5 -->
+      <div class="pad" id="pad5" data-pad="5" tabindex="0" role="button" aria-label="Dance Beat">
+        <div class="pad-live-badge"><span class="live-dot"></span> LIVE</div>
+        <div class="pad-label"><span class="key-badge">5</span> PAD 5</div>
+        <div class="pad-visual">
+          <canvas id="viz5" width="240" height="60"></canvas>
+        </div>
+        <div class="pad-title">Baul Dance</div>
+        <div class="pad-desc">Fast-paced rhythmic accompaniment for dance.</div>
+        <div class="click-hint">▶ Play</div>
+      </div>
+
+      <!-- PAD 4 -->
+      <div class="pad" id="pad4" data-pad="4" tabindex="0" role="button" aria-label="Vocal Mimicry">
+        <div class="pad-live-badge"><span class="live-dot"></span> LIVE</div>
+        <div class="pad-label"><span class="key-badge">4</span> PAD 4</div>
+        <div class="pad-visual">
+          <canvas id="viz4" width="240" height="60"></canvas>
+        </div>
+        <div class="pad-title">Vocal Mimicry</div>
+        <div class="pad-desc">Cry of the heart, microtonal inflection.</div>
+        <div class="click-hint">▶ Play</div>
+      </div>
+
+    </div>
+
+    <!-- CENTER COLUMN -->
+    <div class="center-col">
+
+      <!-- PAD 1 at top of center -->
+      <div class="pad" id="pad1" data-pad="1" tabindex="0" role="button" aria-label="Plucked Rhythm" style="width:100%;">
+        <div class="pad-live-badge"><span class="live-dot"></span> LIVE</div>
+        <div class="pad-label"><span class="key-badge">1</span> PAD 1 — Basic Ektara String Plucking Sound</div>
+        <div class="pad-visual" style="height:50px;">
+          <canvas id="viz1" width="480" height="50"></canvas>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+          <div>
+            <div class="pad-title">Plucked Rhythm</div>
+            <div class="pad-desc">Distinctive rhythmic plucking — the heartbeat of the Baul.</div>
+          </div>
+          <div class="click-hint" style="position:static;">▶ Play</div>
+        </div>
+      </div>
+
+      <!-- Ektara + rings -->
+      <div class="ektara-stage" id="ektara-stage">
+        <div class="ektara-aura"></div>
+        <div class="ripple-ring"></div>
+        <div class="ripple-ring"></div>
+        <div class="ripple-ring"></div>
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Ektara.jpg/220px-Ektara.jpg"
+             id="ektara-img" class="ektara-img" alt="Ektara Instrument"
+             onerror="this.style.display='none'; document.getElementById('ektara-fallback').style.display='block';" />
+        <!-- SVG fallback Ektara illustration -->
+        <svg id="ektara-fallback" style="display:none; width:180px; position:relative; z-index:2;" viewBox="0 0 120 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Body (gourd) -->
+          <ellipse cx="60" cy="210" rx="50" ry="55" fill="url(#gourd-grad)" filter="url(#glow)"/>
+          <!-- Neck (bamboo) -->
+          <rect x="55" y="70" width="10" height="145" rx="5" fill="url(#bamboo-grad)"/>
+          <!-- Head tuner pegs -->
+          <ellipse cx="60" cy="65" rx="12" ry="8" fill="#C87941"/>
+          <circle cx="52" cy="60" r="5" fill="#A06030"/>
+          <circle cx="68" cy="60" r="5" fill="#A06030"/>
+          <!-- String -->
+          <line x1="60" y1="60" x2="60" y2="215" stroke="#FFD166" stroke-width="1.5" stroke-dasharray="none" opacity="0.9"/>
+          <!-- Membrane lines on body -->
+          <ellipse cx="60" cy="210" rx="48" ry="53" stroke="#C87941" stroke-width="1" fill="none" opacity="0.4"/>
+          <ellipse cx="60" cy="210" rx="36" ry="40" stroke="#C87941" stroke-width="0.5" fill="none" opacity="0.3"/>
+          <!-- Bridge at bottom -->
+          <rect x="52" y="205" width="16" height="4" rx="2" fill="#8B5A2B"/>
+          <defs>
+            <radialGradient id="gourd-grad" cx="35%" cy="35%">
+              <stop offset="0%"  stop-color="#E8A055"/>
+              <stop offset="60%" stop-color="#B07030"/>
+              <stop offset="100%" stop-color="#7A4A1A"/>
+            </radialGradient>
+            <linearGradient id="bamboo-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%"  stop-color="#C87941"/>
+              <stop offset="50%" stop-color="#E8A055"/>
+              <stop offset="100%" stop-color="#A06030"/>
+            </linearGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="4" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+        </svg>
+        <canvas id="string-canvas"></canvas>
+      </div>
+
+      <div class="click-indicator">
+        <span class="arrow">◄</span> Click pads or ektara to trigger sounds <span class="arrow">►</span>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: PAD 2 (top) + PAD 3 (bottom) -->
+    <div class="right-col">
+
+      <!-- PAD 2 -->
+      <div class="pad" id="pad2" data-pad="2" tabindex="0" role="button" aria-label="Pitch Bend">
+        <div class="pad-live-badge"><span class="live-dot"></span> LIVE</div>
+        <div class="pad-label"><span class="key-badge">2</span> PAD 2</div>
+        <div class="pad-visual">
+          <canvas id="viz2" width="240" height="60"></canvas>
+        </div>
+        <div class="pad-title">Ektara Slide</div>
+        <div class="pad-desc">Sliding finger across ektara string</div>
+        <div class="click-hint">▶ Play</div>
+      </div>
+
+      <!-- PAD 3 -->
+      <div class="pad" id="pad3" data-pad="3" tabindex="0" role="button" aria-label="Hypnotic Drone">
+        <div class="pad-live-badge"><span class="live-dot"></span> LIVE</div>
+        <div class="pad-label"><span class="key-badge">3</span> PAD 3</div>
+        <div class="pad-visual">
+          <canvas id="viz3" width="240" height="60"></canvas>
+        </div>
+        <div class="pad-title">Ektara Looping</div>
+        <div class="pad-desc">Deep, continuous loop.</div>
+        <div class="click-hint">▶ Play</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Main visualizer -->
+  <div class="visualizer-bar">
+    <div class="viz-container">
+      <div class="viz-label">✦ Live Waveform Output</div>
+      <canvas id="main-visualizer"></canvas>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-divider"></div>
+    <p>The Ektara — One String, Infinite Expression &nbsp;|&nbsp; Baul Folk Tradition, Bengal</p>
+  </footer>
+
+</div>
+
+<!-- Status bar -->
+<div id="status-bar"></div>
+
+<script>
+/* ================================================================
+   EKTARA SOUND EXPLORER — JavaScript Engine
+   ================================================================ */
+
+// ── Audio Context ────────────────────────────────────────────────
+let audioCtx = null;
+let masterGain = null;
+let analyser = null;
+let analyserData = null;
+
+// ── Real MP3 Audio Elements ──────────────────────────────────────
+// Map: pad number → { el: HTMLAudioElement, source: MediaElementAudioSourceNode }
+const MP3_FILES = {
+  1: 'ektara_string_plucking.mp3',  // Plucked Rhythm
+  2: 'ektara_slide.mp3',            // Pitch Bend / Microtone
+  3: 'ektara_looping.mp3',          // Hypnotic Drone (loops)
+  5: 'baul_rythm.mp3',              // Dance Beat
+};
+const mp3Players = {}; // { padNum: { el, source } }
+let audioElementsInitialized = false;
+
+function getAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.75;
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyserData = new Uint8Array(analyser.frequencyBinCount);
+    masterGain.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    // Wire up MP3s now that context exists
+    initMP3Players();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function initMP3Players() {
+  if (audioElementsInitialized) return;
+  audioElementsInitialized = true;
+  Object.entries(MP3_FILES).forEach(([padStr, file]) => {
+    const pad = parseInt(padStr);
+    const el = new Audio(file);
+    el.preload = 'auto';
+    if (pad === 3) el.loop = true;
+    try {
+      const source = audioCtx.createMediaElementSource(el);
+      source.connect(masterGain);
+      mp3Players[pad] = { el, source };
+    } catch (e) {
+      console.warn(`Could not connect MP3 source for pad ${pad}:`, e);
+      mp3Players[pad] = { el, source: null };
+    }
+    el.addEventListener('error', () => {
+      console.warn(`Failed to load ${file} — falling back to synthesis for pad ${pad}`);
+      delete mp3Players[pad];
+    });
+    // Auto-reset pad state when non-looping audio finishes naturally
+    if (pad !== 3) {
+      el.addEventListener('ended', () => { resetPadState(pad); });
+    }
+  });
+}
+
+// ── Pad Definitions ──────────────────────────────────────────────
+const PAD_CONFIG = {
+  1: { id: 'pad1', name: 'Plucked Rhythm',      color: '#FFB347', audioFn: playPluckedRhythm  },
+  2: { id: 'pad2', name: 'Pitch Bend',          color: '#00C9B1', audioFn: playPitchBend      },
+  3: { id: 'pad3', name: 'Hypnotic Drone',      color: '#9B59B6', audioFn: playHypnoticDrone  },
+  4: { id: 'pad4', name: 'Vocal Mimicry',       color: '#3498DB', audioFn: playVocalMimicry   },
+  5: { id: 'pad5', name: 'Dance Beat',          color: '#E74C3C', audioFn: playDanceBeat      },
+};
+
+// Track active drone (pad3)
+let droneNodes = null;
+
+// ── Sound Engines ────────────────────────────────────────────────
+
+// Helper: play an MP3 element from the start
+function playMP3(padNum) {
+  const player = mp3Players[padNum];
+  if (!player) return false;
+  player.el.currentTime = 0;
+  player.el.play().catch(e => console.warn('MP3 play error:', e));
+  return true;
+}
+
+// PAD 1 — Plucked Rhythm (real MP3: ektara_string_plucking.mp3)
+function playPluckedRhythm() {
+  getAudioCtx();
+  if (playMP3(1)) return;
+  // ── Synthesis fallback ──
+  const ctx = audioCtx;
+  const now = ctx.currentTime;
+  const notes = [130.81, 146.83, 164.81, 130.81, 195.99, 164.81, 146.83, 261.63];
+  notes.forEach((freq, i) => { pluckNote(ctx, freq, now + i * 0.22, 0.55); });
+}
+
+function pluckNote(ctx, freq, startTime, duration) {
+  const bufferSize = ctx.sampleRate / freq | 0;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+  const source = ctx.createBufferSource();
+  source.buffer = buffer; source.loop = true;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass'; filter.frequency.value = freq * 8;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.5, startTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+  source.connect(filter); filter.connect(gain); gain.connect(masterGain);
+  source.start(startTime); source.stop(startTime + duration + 0.05);
+}
+
+// PAD 2 — Pitch Bend / Ektara Slide (real MP3: ektara_slide.mp3)
+function playPitchBend() {
+  getAudioCtx();
+  if (playMP3(2)) return;
+  // ── Synthesis fallback ──
+  const ctx = audioCtx;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(220, now);
+  osc.frequency.linearRampToValueAtTime(330, now + 0.4);
+  osc.frequency.linearRampToValueAtTime(196, now + 0.9);
+  osc.frequency.exponentialRampToValueAtTime(440, now + 2.0);
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass'; filter.frequency.value = 1200; filter.Q.value = 3;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.45, now + 0.08);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 2.3);
+  const vib = ctx.createOscillator();
+  vib.frequency.value = 6;
+  const vibGain = ctx.createGain(); vibGain.gain.value = 8;
+  vib.connect(vibGain); vibGain.connect(osc.frequency);
+  osc.connect(filter); filter.connect(gain); gain.connect(masterGain);
+  osc.start(now); vib.start(now); osc.stop(now + 2.5); vib.stop(now + 2.5);
+}
+
+// PAD 3 — Hypnotic Drone (real MP3: ektara_looping.mp3, toggles loop on/off)
+function playHypnoticDrone() {
+  getAudioCtx();
+  const player = mp3Players[3];
+  if (player) {
+    if (!player.el.paused) {
+      // Fade out then pause
+      player.el.pause();
+      player.el.currentTime = 0;
+      droneNodes = null;
+    } else {
+      player.el.play().catch(e => console.warn('Drone play error:', e));
+      droneNodes = [{}]; // truthy = active flag
+    }
+    return;
+  }
+  // ── Synthesis fallback ──
+  const ctx = audioCtx;
+  const now = ctx.currentTime;
+  if (droneNodes) {
+    droneNodes.forEach(n => {
+      try { n.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8); n.osc.stop(now + 0.9); } catch(e) {}
+    });
+    droneNodes = null;
+    return;
+  }
+  droneNodes = [];
+  [82.41, 110, 164.81, 246.94].forEach((f, i) => {
+    const osc = ctx.createOscillator();
+    osc.type = i % 2 === 0 ? 'sawtooth' : 'sine';
+    osc.frequency.value = f + i * 0.15;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.15 + i * 0.07;
+    const lfoG = ctx.createGain(); lfoG.gain.value = 1.5;
+    lfo.connect(lfoG); lfoG.connect(osc.frequency);
+    const filter = ctx.createBiquadFilter(); filter.type = 'lowpass';
+    filter.frequency.value = 800 + i * 200; filter.Q.value = 1.5;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.15, now + 1.2);
+    osc.connect(filter); filter.connect(gain); gain.connect(masterGain);
+    osc.start(now); lfo.start(now);
+    droneNodes.push({ osc, gain });
+  });
+}
+
+// PAD 4 — Vocal Mimicry (formant filtering)
+function playVocalMimicry() {
+  const ctx = getAudioCtx();
+  const now = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(175, now);
+  osc.frequency.setValueAtTime(195, now + 0.3);
+  osc.frequency.setValueAtTime(165, now + 0.7);
+  osc.frequency.setValueAtTime(185, now + 1.1);
+
+  // Formant filters (simulate vowels A → E)
+  const formants = [
+    { f: 800,  Q: 6 },
+    { f: 1150, Q: 8 },
+    { f: 2900, Q: 10 },
+  ];
+  const masterGainFormant = ctx.createGain();
+  masterGainFormant.gain.setValueAtTime(0, now);
+  masterGainFormant.gain.linearRampToValueAtTime(0.35, now + 0.1);
+  masterGainFormant.gain.setValueAtTime(0.35, now + 0.8);
+  masterGainFormant.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+
+  formants.forEach(({ f, Q }) => {
+    const filt = ctx.createBiquadFilter();
+    filt.type = 'bandpass';
+    filt.frequency.setValueAtTime(f, now);
+    filt.frequency.linearRampToValueAtTime(f * 1.3, now + 1.0);
+    filt.Q.value = Q;
+    osc.connect(filt);
+    filt.connect(masterGainFormant);
+  });
+
+  masterGainFormant.connect(masterGain);
+  osc.start(now);
+  osc.stop(now + 2.2);
+}
+
+// PAD 5 — Dance Beat (real MP3: baul_rythm.mp3)
+function playDanceBeat() {
+  getAudioCtx();
+  if (playMP3(5)) return;
+  // ── Synthesis fallback ──
+  const ctx = audioCtx;
+  const now = ctx.currentTime;
+  const pattern = [
+    { type: 'kick', t: 0.00 }, { type: 'hihat', t: 0.18 }, { type: 'hihat', t: 0.36 },
+    { type: 'snare', t: 0.43 }, { type: 'kick', t: 0.54 }, { type: 'hihat', t: 0.61 },
+    { type: 'kick', t: 0.75 }, { type: 'hihat', t: 0.86 }, { type: 'snare', t: 0.97 },
+    { type: 'kick', t: 1.08 }, { type: 'hihat', t: 1.18 }, { type: 'kick', t: 1.40 },
+    { type: 'snare', t: 1.51 }, { type: 'kick', t: 1.62 }, { type: 'hihat', t: 1.73 },
+  ];
+  pattern.forEach(({ type, t }) => {
+    const time = now + t;
+    if (type === 'kick')  playKick(ctx, time);
+    if (type === 'snare') playSnare(ctx, time);
+    if (type === 'hihat') playHihat(ctx, time);
+  });
+}
+
+function playKick(ctx, t) {
+  const osc = ctx.createOscillator(); osc.type = 'sine';
+  osc.frequency.setValueAtTime(160, t); osc.frequency.exponentialRampToValueAtTime(40, t + 0.12);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.8, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+  osc.connect(g); g.connect(masterGain); osc.start(t); osc.stop(t + 0.2);
+}
+function playSnare(ctx, t) {
+  const bufLen = ctx.sampleRate * 0.12 | 0;
+  const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+  const d = buf.getChannelData(0); for (let i = 0; i < bufLen; i++) d[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2200; f.Q.value = 0.8;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.4, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+  src.connect(f); f.connect(g); g.connect(masterGain); src.start(t); src.stop(t + 0.15);
+}
+function playHihat(ctx, t) {
+  const bufLen = ctx.sampleRate * 0.05 | 0;
+  const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+  const d = buf.getChannelData(0); for (let i = 0; i < bufLen; i++) d[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+  src.connect(f); f.connect(g); g.connect(masterGain); src.start(t); src.stop(t + 0.08);
+}
+
+// ── Pad Toggle State ─────────────────────────────────────────────
+const padPlaying = { 1: false, 2: false, 3: false, 4: false, 5: false };
+let pad4StopGain = null; // for stopping synthesized pad 4 early
+
+// Called when audio ends naturally or on stop → resets visual state
+function resetPadState(padNum) {
+  padPlaying[padNum] = false;
+  const el = document.getElementById(PAD_CONFIG[padNum]?.id);
+  if (!el) return;
+  el.classList.remove('is-playing');
+  const hint = el.querySelector('.click-hint');
+  if (hint) hint.textContent = '▶ Play';
+}
+
+function startPad(padNum) {
+  padPlaying[padNum] = true;
+  const cfg = PAD_CONFIG[padNum];
+  const el = document.getElementById(cfg.id);
+
+  // Visual: pulse + persistent glow
+  el.classList.remove('is-active');
+  void el.offsetWidth;
+  el.classList.add('is-active', 'is-playing');
+  const hint = el.querySelector('.click-hint');
+  if (hint) hint.textContent = '■ Stop';
+
+  createBurst(el, cfg.color);
+  vibrateString(cfg.color);
+  showStatus(`${cfg.name} — ● Playing`, cfg.color);
+  setTimeout(() => el.classList.remove('is-active'), 500);
+
+  // Audio
+  cfg.audioFn();
+}
+
+function stopPad(padNum) {
+  padPlaying[padNum] = false;
+  const cfg = PAD_CONFIG[padNum];
+  const el = document.getElementById(cfg.id);
+  el.classList.remove('is-playing');
+  const hint = el.querySelector('.click-hint');
+  if (hint) hint.textContent = '▶ Play';
+  showStatus(`${cfg.name} — ■ Stopped`, cfg.color);
+
+  // Stop audio
+  const player = mp3Players[padNum];
+  if (player) {
+    player.el.pause();
+    player.el.currentTime = 0;
+    if (padNum === 3) droneNodes = null; // reset drone flag
+    return;
+  }
+  // Synthesized pad 4 stop
+  if (padNum === 4 && pad4StopGain) {
+    try {
+      pad4StopGain.gain.cancelScheduledValues(audioCtx.currentTime);
+      pad4StopGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+    } catch(e) {}
+    pad4StopGain = null;
+  }
+  // Synthesized drone stop (fallback)
+  if (padNum === 3 && droneNodes) {
+    const now = audioCtx.currentTime;
+    droneNodes.forEach(n => {
+      try { n.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4); n.osc.stop(now + 0.5); } catch(e) {}
+    });
+    droneNodes = null;
+  }
+}
+
+function triggerPad(padNum) {
+  if (padPlaying[padNum]) {
+    stopPad(padNum);
+  } else {
+    startPad(padNum);
+  }
+}
+
+// ── Ektara Click ─────────────────────────────────────────────────
+document.getElementById('ektara-stage').addEventListener('click', function(e) {
+  const randPad = Math.ceil(Math.random() * 5);
+  triggerPad(randPad);
+});
+
+// ── Pad Click Events ─────────────────────────────────────────────
+Object.values(PAD_CONFIG).forEach(({ id }, idx) => {
+  const padNum = idx + 1;
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('click', () => triggerPad(padNum));
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); triggerPad(padNum); }
+  });
+});
+
+// ── Keyboard Shortcuts ───────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  const n = parseInt(e.key);
+  if (n >= 1 && n <= 5) triggerPad(n);
+});
+
+// ── Status Bar ───────────────────────────────────────────────────
+let statusTimer = null;
+function showStatus(msg, color = '#FFD166') {
+  const bar = document.getElementById('status-bar');
+  bar.textContent = msg;
+  bar.style.color = color;
+  bar.style.borderColor = color + '60';
+  bar.classList.add('visible');
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => bar.classList.remove('visible'), 2500);
+}
+
+// ── Burst Effect ─────────────────────────────────────────────────
+function createBurst(el, color) {
+  const burst = document.createElement('div');
+  burst.className = 'glow-burst';
+  burst.style.background = `radial-gradient(circle, ${color} 0%, transparent 70%)`;
+  burst.style.left = '50%';
+  burst.style.top = '50%';
+  burst.style.transform = 'translate(-50%, -50%)';
+  el.style.position = 'relative';
+  el.appendChild(burst);
+  setTimeout(() => burst.remove(), 600);
+}
+
+// ── String Vibration Canvas ──────────────────────────────────────
+const stringCanvas = document.getElementById('string-canvas');
+let stringVibrating = false;
+let stringColor = '#FFD166';
+let stringPhase = 0;
+let stringAmplitude = 0;
+
+function setupStringCanvas() {
+  const stage = document.getElementById('ektara-stage');
+  stringCanvas.width  = stage.offsetWidth;
+  stringCanvas.height = stage.offsetHeight;
+}
+
+function vibrateString(color) {
+  stringColor = color;
+  stringAmplitude = 14;
+  stringVibrating = true;
+  setTimeout(() => { stringVibrating = false; }, 2500);
+}
+
+function drawString() {
+  const ctx = stringCanvas.getContext('2d');
+  ctx.clearRect(0, 0, stringCanvas.width, stringCanvas.height);
+
+  if (!stringVibrating && stringAmplitude < 0.5) {
+    requestAnimationFrame(drawString);
+    return;
+  }
+
+  if (!stringVibrating) stringAmplitude *= 0.93;
+  else stringAmplitude = Math.max(stringAmplitude * 0.995, 6);
+
+  stringPhase += 0.18;
+
+  const cx = stringCanvas.width / 2;
+  const topY = stringCanvas.height * 0.08;
+  const botY = stringCanvas.height * 0.92;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, topY);
+
+  for (let y = topY; y <= botY; y += 2) {
+    const progress = (y - topY) / (botY - topY);
+    const wave = Math.sin(progress * Math.PI * 4 + stringPhase) * stringAmplitude * Math.sin(progress * Math.PI);
+    ctx.lineTo(cx + wave, y);
+  }
+
+  ctx.strokeStyle = stringColor;
+  ctx.lineWidth = 2.5;
+  ctx.shadowColor = stringColor;
+  ctx.shadowBlur = 12;
+  ctx.globalAlpha = 0.85;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  requestAnimationFrame(drawString);
+}
+
+// ── Pad Mini Visualizers ─────────────────────────────────────────
+const padVizData = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+const padVizPhase = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+const VIZ_PATTERNS = {
+  1: (t, x, w) => Math.sin((x / w) * Math.PI * 6 + t * 8) * Math.sin(t * 3) * 0.7,
+  2: (t, x, w) => {
+    const bend = (x / w);
+    return Math.sin(bend * Math.PI * (2 + bend * 4) + t * 5) * (1 - bend * 0.4) * 0.8;
+  },
+  3: (t, x, w) => {
+    const ripple = Math.sin((x / w - 0.5) * Math.PI * 8 - t * 4);
+    return ripple * Math.exp(-((x/w - 0.5)**2) * 8) * 0.9;
+  },
+  4: (t, x, w) => {
+    const formant = Math.sin((x / w) * Math.PI * 3 + t * 6) * 0.5
+                  + Math.sin((x / w) * Math.PI * 7 + t * 10) * 0.3;
+    return formant;
+  },
+  5: (t, x, w) => {
+    const beat = Math.floor((t * 4) % 4);
+    const pulse = beat === 0 || beat === 2 ? 1 : 0.3;
+    return Math.sin((x / w) * Math.PI * 12 + t * 12) * pulse * 0.6;
+  },
+};
+
+function drawPadViz(padNum, isActive) {
+  const canvas = document.getElementById(`viz${padNum}`);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const color = PAD_CONFIG[padNum].color;
+  const t = performance.now() / 1000;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++) {
+    ctx.beginPath(); ctx.moveTo(0, H * i / 4); ctx.lineTo(W, H * i / 4); ctx.stroke();
+  }
+
+  // Waveform
+  const patternFn = VIZ_PATTERNS[padNum];
+  const amplitude = isActive ? H * 0.42 : H * 0.2;
+
+  ctx.beginPath();
+  ctx.moveTo(0, H / 2);
+
+  for (let x = 0; x <= W; x += 1.5) {
+    const y = H / 2 + patternFn(t, x, W) * amplitude;
+    if (x === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+
+  const grad = ctx.createLinearGradient(0, 0, W, 0);
+  grad.addColorStop(0,   color + '00');
+  grad.addColorStop(0.3, color + 'CC');
+  grad.addColorStop(0.7, color + 'FF');
+  grad.addColorStop(1,   color + '00');
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = isActive ? 2.5 : 1.5;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = isActive ? 16 : 6;
+  ctx.stroke();
+
+  // Fill glow
+  ctx.beginPath();
+  ctx.moveTo(0, H / 2);
+  for (let x = 0; x <= W; x += 1.5) {
+    const y = H / 2 + patternFn(t, x, W) * amplitude;
+    if (x === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.lineTo(W, H / 2);
+  ctx.closePath();
+  const fillGrad = ctx.createLinearGradient(0, 0, 0, H);
+  fillGrad.addColorStop(0, color + '22');
+  fillGrad.addColorStop(1, color + '06');
+  ctx.fillStyle = fillGrad;
+  ctx.fill();
+}
+
+// ── Main Visualizer ──────────────────────────────────────────────
+function drawMainVisualizer() {
+  const canvas = document.getElementById('main-visualizer');
+  const W = canvas.width, H = canvas.height;
+  const ctx = canvas.getContext('2d');
+
+  ctx.clearRect(0, 0, W, H);
+
+  if (analyser && analyserData) {
+    analyser.getByteTimeDomainData(analyserData);
+    const sliceW = W / analyserData.length;
+
+    ctx.beginPath();
+    for (let i = 0; i < analyserData.length; i++) {
+      const v = analyserData[i] / 128.0;
+      const y = (v * H) / 2;
+      if (i === 0) ctx.moveTo(0, y);
+      else ctx.lineTo(i * sliceW, y);
+    }
+    ctx.strokeStyle = '#FFD16680';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Spectrum bars
+    analyser.getByteFrequencyData(analyserData);
+    const barCount = 80;
+    const barW = W / barCount;
+    for (let i = 0; i < barCount; i++) {
+      const val = analyserData[i * Math.floor(analyserData.length / barCount)] / 255;
+      const bH = val * H * 0.85;
+      const hue = 30 + i * 2;
+      ctx.fillStyle = `hsla(${hue}, 90%, 55%, ${0.3 + val * 0.5})`;
+      ctx.fillRect(i * barW, H - bH, barW - 1, bH);
+    }
+  } else {
+    // Idle: gentle sine
+    const t = performance.now() / 1000;
+    ctx.beginPath();
+    for (let x = 0; x <= W; x++) {
+      const y = H / 2 + Math.sin(x * 0.02 + t * 1.5) * 6 + Math.sin(x * 0.05 + t * 2.3) * 3;
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = 'rgba(232,161,0,0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+}
+
+function resizeMainViz() {
+  const canvas = document.getElementById('main-visualizer');
+  canvas.width  = canvas.parentElement.clientWidth - 32;
+  canvas.height = 70;
+}
+
+// ── Starfield ────────────────────────────────────────────────────
+function initStars() {
+  const canvas = document.getElementById('stars-canvas');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const ctx = canvas.getContext('2d');
+  const stars = Array.from({ length: 200 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: Math.random() * 1.5,
+    a: Math.random(),
+    s: Math.random() * 0.005 + 0.001,
+  }));
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    stars.forEach(s => {
+      s.a += s.s;
+      const alpha = (Math.sin(s.a) + 1) / 2 * 0.6;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,240,200,${alpha})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// ── Main Animation Loop ──────────────────────────────────────────
+function animate() {
+  for (let p = 1; p <= 5; p++) {
+    const el = document.getElementById(PAD_CONFIG[p].id);
+    const isActive = el && el.classList.contains('is-active');
+    drawPadViz(p, isActive);
+  }
+  // Drone always active
+  if (droneNodes) {
+    const droneEl = document.getElementById('pad3');
+    droneEl && droneEl.classList.add('is-active');
+  }
+  drawMainVisualizer();
+  requestAnimationFrame(animate);
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  setupStringCanvas();
+  resizeMainViz();
+  initStars();
+  drawString();
+  animate();
+  showStatus('Welcome — Click any pad or press 1–5 to play', '#FFD166');
+});
+
+window.addEventListener('resize', () => {
+  setupStringCanvas();
+  resizeMainViz();
+  const starsCanvas = document.getElementById('stars-canvas');
+  starsCanvas.width  = window.innerWidth;
+  starsCanvas.height = window.innerHeight;
+});
+</script>
+</body>
+</html>

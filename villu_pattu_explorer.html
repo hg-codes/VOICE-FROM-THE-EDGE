@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Villu Pattu | 3D Instrument Explorer</title>
+  <meta name="description" content="Interactive 3D exploration of the Villu Pattu musical bow instrument of Tamil Nadu, India. Click each part to learn its name, construction, and cultural significance.">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Noto+Serif+Tamil:wght@400;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; overflow:hidden; }
+    body {
+      background: #060104;
+      color: #F0DEC0;
+      font-family: 'Inter', sans-serif;
+      display: flex; flex-direction: column; height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    #hdr {
+      flex-shrink: 0; height: 62px;
+      background: linear-gradient(to right, #080207, #0F0410, #080207);
+      border-bottom: 1px solid rgba(180,55,40,0.30);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 22px;
+    }
+    .hdr-l { display:flex; align-items:center; gap:14px; }
+    .hdr-icon { font-size:2rem; }
+    .hdr-title h1 {
+      font-family:'Cinzel',serif; font-size:1.2rem; color:#CC3322;
+      letter-spacing:.1em;
+    }
+    .hdr-title .sub {
+      font-size:.62rem; color:rgba(200,120,80,.55); letter-spacing:.14em; margin-top:2px;
+    }
+    .hdr-badges { display:flex; gap:10px; }
+    .hbadge {
+      padding:3px 12px; border-radius:12px; font-size:.65rem;
+      border:1px solid; letter-spacing:.08em;
+    }
+    .hbadge.red   { border-color:rgba(200,50,40,.35); background:rgba(200,50,40,.08); color:#E06050; }
+    .hbadge.gold  { border-color:rgba(200,160,40,.35); background:rgba(200,160,40,.08); color:#CCA028; }
+    .hbadge.white { border-color:rgba(200,180,140,.2); background:rgba(200,180,140,.05); color:rgba(200,170,130,.7); }
+
+    /* ── MAIN ── */
+    #main { flex:1; display:flex; overflow:hidden; }
+
+    /* ── PARTS LIST PANEL ── */
+    #parts-panel {
+      width: 215px; flex-shrink:0;
+      background: rgba(10,3,7,0.97);
+      border-right: 1px solid rgba(160,50,40,.18);
+      display: flex; flex-direction:column; overflow:hidden;
+    }
+    .pp-title {
+      padding:12px 14px 8px;
+      font-size:.6rem; letter-spacing:.14em; color:rgba(200,100,80,.5);
+      text-transform:uppercase; border-bottom:1px solid rgba(160,50,40,.12);
+    }
+    .pp-list { flex:1; overflow-y:auto; }
+    .pp-list::-webkit-scrollbar { width:3px; }
+    .pp-list::-webkit-scrollbar-thumb { background:rgba(180,50,40,.3); border-radius:2px; }
+    .part-item {
+      padding:11px 14px; cursor:pointer;
+      border-bottom:1px solid rgba(160,50,40,.08);
+      transition:all .18s; display:flex; align-items:center; gap:10px;
+    }
+    .part-item:hover { background:rgba(180,50,40,.1); }
+    .part-item.sel { background:rgba(180,50,40,.18); border-left:3px solid; }
+    .pi-icon { font-size:1.15rem; flex-shrink:0; width:22px; text-align:center; }
+    .pi-name { font-size:.82rem; font-weight:600; color:#F0DEC0; }
+    .pi-tamil { font-family:'Noto Serif Tamil',serif; font-size:.72rem; color:rgba(200,140,80,.6); }
+    .pi-sub { font-size:.65rem; color:rgba(180,130,90,.5); margin-top:1px; }
+    .pp-divider { padding:8px 14px 4px; font-size:.58rem; letter-spacing:.12em; color:rgba(180,80,40,.4); text-transform:uppercase; }
+
+    /* ── 3D CANVAS AREA ── */
+    #cv-area { flex:1; position:relative; overflow:hidden; }
+    #cv { display:block; width:100%; height:100%; }
+    #cv-overlay { position:absolute; inset:0; pointer-events:none; }
+
+    /* Floating labels */
+    .fl-label {
+      position:absolute; transform:translate(-50%,-50%);
+      pointer-events:none; display:flex; flex-direction:column; align-items:center;
+      opacity:0; transition:opacity .3s;
+    }
+    .fl-label.vis { opacity:1; }
+    .fl-dot { width:8px; height:8px; border-radius:50%; border:2px solid rgba(255,255,255,.8); margin-bottom:3px; }
+    .fl-text {
+      padding:2px 8px; border-radius:10px; font-size:.6rem; font-weight:600;
+      letter-spacing:.08em; white-space:nowrap;
+      background:rgba(8,2,6,.88); border:1px solid;
+    }
+
+    /* Bottom control bar */
+    #ctrl-bar {
+      position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
+      display:flex; gap:10px; align-items:center;
+    }
+    .ctrl-btn {
+      padding:6px 16px; border-radius:20px;
+      background:rgba(10,3,7,.88); border:1px solid rgba(160,50,40,.3);
+      color:rgba(200,130,80,.8); font-size:.7rem; cursor:pointer;
+      transition:all .2s; letter-spacing:.06em;
+    }
+    .ctrl-btn:hover { border-color:rgba(180,60,40,.6); color:#E09060; background:rgba(15,5,10,.95); }
+    .ctrl-btn.active { border-color:rgba(200,80,40,.7); color:#FF6B40; background:rgba(200,80,40,.12); }
+
+    /* Hover tooltip on canvas */
+    #cv-tip {
+      position:absolute; pointer-events:none; display:none;
+      background:rgba(10,3,7,.93); border:1px solid rgba(180,60,40,.4);
+      border-radius:8px; padding:5px 12px; font-size:.72rem; color:#CC5533;
+      white-space:nowrap; z-index:20;
+    }
+
+    /* Top info bar on canvas */
+    #cv-topbar {
+      position:absolute; top:12px; left:50%; transform:translateX(-50%);
+      display:flex; gap:16px; pointer-events:none;
+    }
+    .ctb-item {
+      padding:4px 12px; border-radius:14px;
+      background:rgba(10,3,7,.78); border:1px solid rgba(160,50,40,.18);
+      font-size:.64rem; color:rgba(200,130,80,.7); letter-spacing:.08em;
+    }
+
+    /* ── INFO PANEL ── */
+    #info-panel {
+      width: 355px; flex-shrink:0;
+      background: rgba(10,3,7,0.97);
+      border-left:1px solid rgba(160,50,40,.18);
+      overflow-y:auto; display:flex; flex-direction:column;
+    }
+    #info-panel::-webkit-scrollbar { width:3px; }
+    #info-panel::-webkit-scrollbar-thumb { background:rgba(180,50,40,.3); border-radius:2px; }
+
+    /* Default state */
+    #ip-default {
+      flex:1; display:flex; flex-direction:column; align-items:center;
+      justify-content:center; padding:32px 20px; text-align:center;
+      color:rgba(180,100,60,.4);
+    }
+    #ip-default .iem { font-size:3rem; margin-bottom:14px; animation:bob 4s ease-in-out infinite; }
+    @keyframes bob { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-8px);} }
+    #ip-default h3 { font-family:'Cinzel',serif; font-size:1rem; color:rgba(200,80,50,.45); margin-bottom:6px; }
+    #ip-default p { font-size:.74rem; line-height:1.65; }
+
+    /* Part info */
+    #ip-content { display:none; flex-direction:column; }
+    #ip-content.vis { display:flex; }
+
+    .ipc-head {
+      padding:16px 18px 12px;
+      border-bottom:1px solid rgba(160,50,40,.1);
+    }
+    .ipc-cat {
+      display:inline-block; padding:2px 10px; border-radius:12px;
+      font-size:.58rem; font-weight:700; letter-spacing:.12em;
+      text-transform:uppercase; margin-bottom:7px; border:1px solid;
+    }
+    .ipc-name { font-family:'Cinzel',serif; font-size:1.5rem; color:#FFD0A0; letter-spacing:.04em; }
+    .ipc-tamil { font-family:'Noto Serif Tamil',serif; font-size:1rem; color:rgba(200,140,80,.6); margin-top:4px; }
+    .ipc-sub { font-size:.78rem; color:rgba(200,140,80,.5); margin-top:3px; }
+
+    .ipc-sec { padding:12px 18px; border-bottom:1px solid rgba(160,50,40,.08); }
+    .sec-lbl { font-size:.59rem; letter-spacing:.13em; text-transform:uppercase; color:rgba(180,80,50,.5); margin-bottom:5px; }
+    .sec-p { font-size:.77rem; line-height:1.65; color:rgba(220,185,140,.83); }
+
+    .ipc-grid { padding:10px 18px; display:grid; grid-template-columns:1fr 1fr; gap:7px; border-bottom:1px solid rgba(160,50,40,.08); }
+    .ig-cell { background:rgba(255,255,255,.03); border:1px solid rgba(160,50,40,.12); border-radius:8px; padding:8px 10px; }
+    .ig-lbl { font-size:.58rem; color:rgba(180,100,60,.5); letter-spacing:.1em; text-transform:uppercase; margin-bottom:3px; }
+    .ig-val { font-size:.74rem; color:#E0C090; font-weight:500; }
+
+    .ipc-fact {
+      padding:10px 16px; margin:0 18px 12px;
+      background:rgba(180,80,40,.07); border-left:3px solid rgba(180,80,40,.5);
+      border-radius:0 8px 8px 0;
+    }
+    .fact-lbl { font-size:.58rem; color:rgba(200,100,60,.55); letter-spacing:.12em; margin-bottom:3px; }
+    .fact-p { font-size:.73rem; line-height:1.6; color:rgba(220,180,120,.8); font-style:italic; }
+
+    .ipc-sound { padding:12px 18px 16px; }
+    .snd-btn {
+      width:100%; padding:10px; border:none; border-radius:8px;
+      cursor:pointer; font-size:.8rem; font-weight:600; letter-spacing:.05em;
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      transition:all .2s;
+    }
+    .snd-btn:hover { transform:translateY(-1px); }
+    @keyframes spulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.02);} }
+    .snd-btn.playing { animation:spulse .8s ease infinite; }
+
+    /* Navigation */
+    .ipc-nav { display:flex; justify-content:space-between; padding:8px 18px 16px; }
+    .inav-btn {
+      padding:5px 14px; border:1px solid rgba(160,50,40,.2);
+      background:rgba(255,255,255,.03); border-radius:8px;
+      color:rgba(200,130,80,.6); font-size:.68rem; cursor:pointer;
+      transition:all .2s;
+    }
+    .inav-btn:hover { border-color:rgba(180,60,40,.45); color:#E09060; }
+
+    /* Pluck animation flash */
+    #pluck-flash {
+      position:absolute; inset:0; pointer-events:none; opacity:0;
+      background:radial-gradient(circle at 50% 50%, rgba(255,160,50,.12) 0%, transparent 70%);
+      transition:opacity .1s;
+    }
+  </style>
+</head>
+<body>
+<!-- INJECTED BACK NAVIGATION -->
+<div id="exhib-back-btn" style="position:fixed; top:20px; left:20px; z-index:999999;">
+<a href="index.html" style="background:rgba(15,10,25,0.75); border:1px solid rgba(232,161,0,0.3); color:#F5ECD7; text-decoration:none; padding:8px 16px; border-radius:100px; font-family:sans-serif; font-size:0.85rem; font-weight:500; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); display:flex; align-items:center; gap:8px; box-shadow:0 4px 20px rgba(0,0,0,0.5); transition:all 0.3s ease; text-transform:uppercase; letter-spacing:0.1em;" onmouseover="this.style.background='rgba(232,161,0,0.25)'; this.style.borderColor='#E8A100';" onmouseout="this.style.background='rgba(15,10,25,0.75)'; this.style.borderColor='rgba(232,161,0,0.3)';">
+   <span style="font-size:1.2em; margin-top:-2px;">&#10229;</span> Exhibition Hub
+</a>
+</div>
+
+
+  <!-- Header -->
+  <div id="hdr">
+    <div class="hdr-l">
+      <div class="hdr-icon">🏹</div>
+      <div class="hdr-title">
+        <h1>VILLU PATTU — வில்லுப்பாட்டு</h1>
+        <div class="sub">3D INSTRUMENT EXPLORER · CLICK ANY PART TO LEARN MORE</div>
+      </div>
+    </div>
+    <div class="hdr-badges">
+      <div class="hbadge red">🔴 Endangered Folk Art</div>
+      <div class="hbadge gold">⭐ Tamil Nadu Heritage</div>
+      <div class="hbadge white">📅 2000+ BCE</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div id="main">
+
+    <!-- Parts list -->
+    <div id="parts-panel">
+      <div class="pp-title">Instrument Components</div>
+      <div class="pp-list" id="pp-list"></div>
+    </div>
+
+    <!-- 3D Canvas area -->
+    <div id="cv-area">
+      <canvas id="cv"></canvas>
+      <div id="cv-overlay">
+        <!-- Floating part labels (injected by JS) -->
+      </div>
+      <div id="cv-topbar">
+        <div class="ctb-item">🌍 Tamil Nadu, India</div>
+        <div class="ctb-item">🎵 Narrative Bow Song</div>
+        <div class="ctb-item">🏛 Ancient &amp; Living Tradition</div>
+      </div>
+      <div id="ctrl-bar">
+        <button class="ctrl-btn active" id="btn-rotate" onclick="toggleRotate()">⟳ Auto-Rotate</button>
+        <button class="ctrl-btn" id="btn-pluck" onclick="pluckString()">🎵 Pluck String</button>
+        <button class="ctrl-btn" id="btn-labels" onclick="toggleLabels()">🏷 Labels</button>
+        <button class="ctrl-btn" onclick="resetCamera()">⌖ Reset View</button>
+      </div>
+      <div id="cv-tip"></div>
+      <div id="pluck-flash"></div>
+    </div>
+
+    <!-- Info panel -->
+    <div id="info-panel">
+      <div id="ip-default">
+        <div class="iem">🏹</div>
+        <h3>Explore the Villu</h3>
+        <p>Click any glowing part on the 3D model, or select from the list on the left, to discover how it was made and its cultural significance.</p>
+        <div style="margin-top:22px;padding:14px;background:rgba(180,50,40,.05);border:1px solid rgba(160,50,40,.15);border-radius:10px;text-align:left">
+          <div style="font-size:.6rem;color:rgba(180,80,50,.5);letter-spacing:.12em;margin-bottom:8px">ABOUT VILLU PATTU</div>
+          <p style="font-size:.74rem;line-height:1.65;color:rgba(200,160,110,.7)">
+            Villu Pattu (வில்லுப்பாட்டு) literally means <em>"Bow Song"</em> in Tamil. An ancient performing art where mythological epics are narrated through song, with a massive 7–10 foot musical bow as the primary instrument. The lead singer (Annavi) plays the bow while a troupe sings the chorus.
+          </p>
+        </div>
+      </div>
+      <div id="ip-content"></div>
+    </div>
+
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script>
+  /* ================================================================
+     VILLU PATTU — 3D Instrument Explorer
+     A complete interactive museum-quality 3D visualization
+  ================================================================ */
+
+  // ── PARTS DATA ──────────────────────────────────────────────────
+  const PARTS = [
+    {
+      id: 'villu',
+      symbol: '🏹',
+      name: 'Villu',
+      tamil: 'வில்லு',
+      sub: 'The Bow',
+      cat: 'Structure',
+      catColor: '#C44020',
+      matColor: 0x7B3A1A,
+      hlColor: '#FF6B30',
+      grid: [
+        { l:'Material', v:'Palmyra palm wood or bamboo' },
+        { l:'Length', v:'7 to 10 feet (up to 14 ft)' },
+        { l:'Thickness', v:'3–5 cm diameter at centre' },
+        { l:'Age', v:'Predates Vedic period' },
+      ],
+      desc: `The Villu is the instrument's soul — a massive bow, originally a hunter's weapon, transformed into a sacred musical instrument by Tamil tribal communities. Crafted from the hardy Palmyra palm tree (Borassus flabellifer) or seasoned bamboo, its natural springiness gives the instrument its resonant quality. At 7–10 feet tall, it towers over a seated performer, becoming a visual statement as much as a sonic one.`,
+      crafting: `The wood must be cut during specific lunar phases and dry-seasoned for 1–3 years before use. Master craftsmen select wood with even grain and no knots, testing the natural curve and resonance by tapping before cutting. The convex side of the bow rests on the clay pot — the exact curvature must distribute vibration evenly across the pot's neck.`,
+      fact: `A single skilled Annavi (lead performer) can produce 12 distinct tonal qualities from the Villu — by varying where they strike along the string, how hard they strike, and whether they simultaneously press the bow against the pot. This acoustic versatility is equivalent to having 12 different drums from one bow.`,
+      sound: { t:'bow', f:[98, 147], d:3.5 },
+    },
+    {
+      id: 'narambu',
+      symbol: '〰',
+      name: 'Narambu',
+      tamil: 'நரம்பு',
+      sub: 'The Taut String',
+      cat: 'Sound Generator',
+      catColor: '#A0A020',
+      matColor: 0xC8C8A0,
+      hlColor: '#FFFF80',
+      grid: [
+        { l:'Material', v:'Cowhide or hemp (traditional); steel wire (modern)' },
+        { l:'Tension', v:'High — creates the bow\'s flex' },
+        { l:'Pitch', v:'Tuned to Sa (root note of chosen raga)' },
+        { l:'Technique', v:'Struck with Veesukol sticks' },
+      ],
+      desc: `The Narambu (meaning "string" or "nerve" in Tamil — both perfectly describe its role) is a single, taut cord stretched from the base to tip of the bow. When struck with the striking sticks (Veesukol), it vibrates at frequencies that travel through the bow wood into the clay pot below, creating the characteristic deep resonant twang. The string's tension is what bends the bow into its iconic curved shape.`,
+      crafting: `Traditionally made from twisted cowhide or hemp rope. Modern troupes use heavy-gauge steel or brass wire (similar to wound guitar bass strings). The string must be tuned precisely to the root tone of the night's raga, typically by tightening or loosening the knot at the bow's tip.`,
+      fact: `The Narambu's vibration, amplified by the pot, can be felt as a physical pressure on the chest by audience members sitting up to 10 feet away — similar to the bass rumble at a modern concert. This full-body resonance contributes to the trance-like state that long Villu Pattu performances historically induced in audiences.`,
+      sound: { t:'twang', f:[98], d:4.2 },
+    },
+    {
+      id: 'kudam',
+      symbol: '🏺',
+      name: 'Kudam',
+      tamil: 'குடம்',
+      sub: 'Clay Pot Resonator',
+      cat: 'Resonator',
+      catColor: '#B04018',
+      matColor: 0xBC4A1A,
+      hlColor: '#FF8C30',
+      grid: [
+        { l:'Material', v:'Unglazed terracotta (fired clay)' },
+        { l:'Size', v:'30–45 cm diameter, 35–50 cm tall' },
+        { l:'Function', v:'Passive acoustic amplifier' },
+        { l:'Specialty', v:'Also beaten as a drum' },
+      ],
+      desc: `The Kudam is the acoustic genius of Villu Pattu — a clay pot that functions as both an acoustic amplifier AND a percussion instrument. The convex side of the bow is placed to rest on the pot's neck. When the string vibrates, those vibrations travel down the bow into the clay, and the pot's air volume amplifies them like a speaker cabinet. A second performer also beats the pot's mouth with a paddle, creating bass rhythms simultaneously.`,
+      crafting: `Made by traditional potters (Kuyavar caste) using clay from sacred river beds, fired at precise temperatures. The pot must have the right wall thickness and volume for resonance — not too thick (dull thud) nor too thin (cracks under vibration). Master potters can "tune" the pot during throwing, pre-tuning the resonance chamber for a specific frequency range. The pot is often placed on a coconut fiber cushion (puriyana) to stabilize it.`,
+      fact: `A single clay pot can amplify the string's vibration by up to 15–20 dB — roughly doubling perceived loudness — allowing troupes to perform for 500+ people in open-air settings throughout the night, entirely acoustically. The clay's porous nature also gives the amplified sound its characteristic warm, "earthy" tonal quality that no metal resonator can replicate.`,
+      sound: { t:'pot', f:[60, 80], d:2 },
+    },
+    {
+      id: 'ghungroo',
+      symbol: '🔔',
+      name: 'Ghungroo / Mani',
+      tamil: 'மணி',
+      sub: 'Bronze Bells on the Bow',
+      cat: 'Accent / Rhythm',
+      catColor: '#C09020',
+      matColor: 0xD4A020,
+      hlColor: '#FFD060',
+      grid: [
+        { l:'Material', v:'Cast brass or bronze' },
+        { l:'Count', v:'20–40 bells per bow' },
+        { l:'Placement', v:'Hung in rows along the bow length' },
+        { l:'Sound', v:'Chime on every bow-strike' },
+      ],
+      desc: `Numerous bronze or brass bells (Ghungroo/Mani) are hung in rows along the length of the bow. When the Veesukol strikes the string and the bow vibrates, the bells automatically chime — no extra action needed. This creates a seamless overlay of high-frequency shimmer above the deep bow-string tone, giving Villu Pattu its distinctive layered texture. The more energetically the string is struck, the louder and brighter the bell cascade.`,
+      crafting: `Traditional bells are cast from temple-grade brass (70% copper, 30% zinc), which produces a sustained, warm ring. The ideal bell for Villu Pattu has a decay time matching the bow string's vibration length — so when one fades, the other takes over, creating continuous, unbroken sound. Bells are threaded on cords and arranged in graduating sizes along the bow for tonal variety.`,
+      fact: `In Tamil tradition, bells ringing during auspicious events create a sacred space (kshetra) anywhere they sound. A Villu Pattu performance with its constantly ringing bells temporarily transforms any open field or village square into a temple space — a remarkable acoustic form of sanctification that has served Tamil communities for millennia.`,
+      sound: { t:'bell', f:[800, 1200, 1600], d:2.5 },
+    },
+    {
+      id: 'veesukol',
+      symbol: '🥢',
+      name: 'Veesukol',
+      tamil: 'வீசுகோல்',
+      sub: 'The Striking Sticks',
+      cat: 'Striker / Plectrum',
+      catColor: '#806030',
+      matColor: 0xC8A060,
+      hlColor: '#FFE080',
+      grid: [
+        { l:'Material', v:'Thin bamboo or rattan' },
+        { l:'Length', v:'25–35 cm per stick' },
+        { l:'Count', v:'Two sticks, one per hand' },
+        { l:'Technique', v:'Alternating / simultaneous strikes' },
+      ],
+      desc: `The Veesukol are two slender wooden sticks that the lead Annavi holds — one in each hand. They strike these against the taut string of the bow to produce the rhythmic heartbeat of Villu Pattu. Through the Veesukol, the Annavi controls everything: rhythm (talam), tempo, dynamics, and even melodic tone (by striking at different points along the string). The sticks also cause the hanging bells to vibrate with each strike.`,
+      crafting: `Cut from thin-walled bamboo roughly the thickness of a chopstick. Some performers wrap the striking end in cloth or leather for a warmer, softer attack on ballad sections; others prefer the bright metallic "ping" of bare bamboo striking the wire for energetic sections. A skilled performer may own several sets of sticks with different tip materials for tonal variety.`,
+      fact: `Advanced Annavi performers use the Veesukol to produce at least 7 rhythmically distinct sounds from a single string: by varying the striking position (middle vs. near ends), angle (perpendicular vs. angled), force, and whether they press the bow against the pot or lift it during the strike. This is equivalent to a drummer having 7 different drums — all from two sticks and one string.`,
+      sound: { t:'stick', f:[400, 600], d:0.8 },
+    },
+    {
+      id: 'maala',
+      symbol: '🌸',
+      name: 'Maala / Alankaaram',
+      tamil: 'மாலை / அலங்காரம்',
+      sub: 'Sacred Flower Decorations',
+      cat: 'Sacred Adornment',
+      catColor: '#A02060',
+      matColor: 0xFF4560,
+      hlColor: '#FF80B0',
+      grid: [
+        { l:'Flowers', v:'Jasmine, Marigold, Chrysanthemum' },
+        { l:'Cloth', v:'Red, yellow, green silk ribbons' },
+        { l:'Imagery', v:'Lord Murugan, Goddess Amman' },
+        { l:'Ritual', v:'Re-adorned every performance day' },
+      ],
+      desc: `The Maala (garlands) and Alankaaram (full decorations) transform the Villu from a wooden bow into a sacred ritual object. Jasmine and marigold garlands are threaded along the bow, alongside strips of colored silk, deity figures (usually Lord Murugan or Goddess Amman), and hanging tassels. Without the Maala, no performance can begin. The act of decorating the bow is itself a ritual called "Villu Alankaaram," performed at dawn on the day of performance.`,
+      crafting: `Fresh flowers are prepared by troupe family members the morning of each performance. The pattern follows the night's story — green jasmine for forest scenes, red hibiscus for battles, yellow marigold for celebrations. Small deity images are secured at key points — the deity faces the audience throughout the performance as an eternal witness to the storytelling.`,
+      fact: `Researchers have documented that experienced community members could "read" the Maala's flower arrangement before a performance and correctly predict which stories would be told that night. The decorations functioned as a visual "program" — the world's oldest folk art setlist, encoded in flowers.`,
+      sound: { t:'jingle', f:[1000, 1500], d:1.5 },
+    },
+  ];
+
+  // ── THREE.JS SETUP ───────────────────────────────────────────────
+  const canvas   = document.getElementById('cv');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
+
+  const scene  = new THREE.Scene();
+  scene.background = new THREE.Color(0x060104);
+  scene.fog = new THREE.Fog(0x060104, 18, 40);
+
+  let camW = canvas.parentElement.clientWidth;
+  let camH = canvas.parentElement.clientHeight;
+  const camera = new THREE.PerspectiveCamera(42, camW / camH, 0.1, 100);
+  camera.position.set(4.5, 0.5, 7);
+  camera.lookAt(0, 0, 0);
+
+  const controls = new THREE.OrbitControls(camera, canvas);
+  controls.enableDamping = true; controls.dampingFactor = 0.07;
+  controls.minDistance = 3; controls.maxDistance = 18;
+  controls.target.set(0, -0.3, 0);
+  controls.enablePan = false;
+
+  // ── LIGHTS ──────────────────────────────────────────────────────
+  scene.add(new THREE.AmbientLight(0x3A1510, 1.2));
+
+  const keyLight = new THREE.DirectionalLight(0xFFB070, 2.2);
+  keyLight.position.set(4, 6, 5);
+  keyLight.castShadow = true;
+  keyLight.shadow.mapSize.set(1024, 1024);
+  scene.add(keyLight);
+
+  const fillLight = new THREE.DirectionalLight(0x2040A0, 0.5);
+  fillLight.position.set(-5, 2, -3); scene.add(fillLight);
+
+  const rimLight = new THREE.DirectionalLight(0xFF4422, 0.7);
+  rimLight.position.set(-2, -3, 4); scene.add(rimLight);
+
+  const floorGlow = new THREE.PointLight(0xCC5520, 1.2, 8);
+  floorGlow.position.set(0, -4.5, 0); scene.add(floorGlow);
+
+  // ── MODEL STATE ─────────────────────────────────────────────────
+  let allMeshes    = [];   // for raycasting
+  let partGroups   = {};   // id → THREE.Group
+  let partMats     = {};   // id → original material(s)
+  let selPart      = null;
+  let autoRotate   = true;
+  let labelsVis    = true;
+  let vibrateT     = 0;
+  let vibrating    = false;
+  let stringMesh   = null;
+  let currentAudio = null; // currently playing HTML Audio element
+
+  // ── MP3 FILE MAPPING (part id → filename) ──────────────────────
+  const PART_SOUNDS = {
+    villu:    'villu_sound(mp3).mp3',   // Villu bow twang
+    narambu:  'villu_sound(mp3).mp3',   // Same bow/string sound
+    kudam:    'kutam(pot)_sound(mp3).mp3',    // Clay pot resonance
+    ghungroo: 'kattai(blocks)_sound(mp3).mp3', // Closest percussion layer
+    veesukol: 'kattai(blocks)_sound(mp3).mp3', // Wooden block / stick strike
+    maala:    'udukkai(drum)_sound(mp3).mp3',  // Udukku drum for ambience
+  };
+
+  // Preload all unique audio files
+  const audioCache = {};
+  [...new Set(Object.values(PART_SOUNDS))].forEach(file => {
+    const a = new Audio(file);
+    a.preload = 'auto';
+    audioCache[file] = a;
+  });
+
+  // Label world-space positions
+  const LABEL_POS = {
+    villu:     new THREE.Vector3( 1.6,  0.5, 0),
+    narambu:   new THREE.Vector3(-0.6, -0.5, 0),
+    kudam:     new THREE.Vector3( 0.8, -3.7, 0),
+    ghungroo:  new THREE.Vector3( 1.7, -0.2, 0.2),
+    veesukol:  new THREE.Vector3(-1.2,  1.0, 0.5),
+    maala:     new THREE.Vector3( 1.9,  1.3, 0.2),
+  };
+
+  // ── BUILD 3D MODEL ──────────────────────────────────────────────
+  function buildModel() {
+    // ── BOW CURVE ──
+    const bowPts = [
+      new THREE.Vector3( 0.05, -2.8, 0),
+      new THREE.Vector3( 0.55, -2.0, 0),
+      new THREE.Vector3( 0.95, -1.1, 0),
+      new THREE.Vector3( 1.25,  0.0, 0),
+      new THREE.Vector3( 1.0,   1.1, 0),
+      new THREE.Vector3( 0.55,  2.1, 0),
+      new THREE.Vector3( 0.05,  2.8, 0),
+    ];
+    const bowCurve = new THREE.CatmullRomCurve3(bowPts);
+
+    // Main bow body
+    const bowGeo = new THREE.TubeGeometry(bowCurve, 60, 0.07, 10, false);
+    const bowMat = new THREE.MeshStandardMaterial({
+      color: 0x7B3A1A, roughness: 0.78, metalness: 0.05,
+      emissive: 0x100500, emissiveIntensity: 0.1,
+    });
+    const bowMesh = new THREE.Mesh(bowGeo, bowMat);
+    bowMesh.castShadow = true;
+    bowMesh.userData.partId = 'villu';
+
+    // Bow end caps / knobs
+    const tipMat = new THREE.MeshStandardMaterial({ color: 0x5A2A0F, roughness: 0.7 });
+    const tipGeo = new THREE.SphereGeometry(0.10, 10, 10);
+    const tipTop = new THREE.Mesh(tipGeo, tipMat);
+    tipTop.position.copy(bowPts[bowPts.length-1]);
+    tipTop.userData.partId = 'villu';
+    const tipBot = new THREE.Mesh(tipGeo, tipMat);
+    tipBot.position.copy(bowPts[0]);
+    tipBot.userData.partId = 'villu';
+
+    // Wood grain lines along bow (decorative ridges)
+    for (let i = 0; i < 5; i++) {
+      const ridgeGeo = new THREE.TubeGeometry(bowCurve, 60, 0.005, 4, false);
+      const ridgeMat = new THREE.MeshStandardMaterial({ color: 0x4A2210, roughness: 1 });
+      const ridge = new THREE.Mesh(ridgeGeo, ridgeMat);
+      const angle = (i / 5) * Math.PI * 2;
+      ridge.rotation.y = angle * 0.05;
+      ridge.userData.partId = 'villu';
+      bowMesh.add(ridge);
+    }
+
+    const villGroup = new THREE.Group();
+    villGroup.add(bowMesh, tipTop, tipBot);
+    partGroups['villu'] = villGroup;
+    partMats['villu']   = [bowMat, tipMat];
+    scene.add(villGroup);
+    allMeshes.push(bowMesh, tipTop, tipBot);
+
+    // ── STRING (NARAMBU) ──
+    const strPts = [
+      new THREE.Vector3(0.05, -2.8, 0),
+      new THREE.Vector3(0,    -1.4, 0.04),
+      new THREE.Vector3(0,     0,   0.06),  // slight natural sag
+      new THREE.Vector3(0,     1.4, 0.04),
+      new THREE.Vector3(0.05,  2.8, 0),
+    ];
+    const strCurve = new THREE.CatmullRomCurve3(strPts);
+    const strGeo   = new THREE.TubeGeometry(strCurve, 40, 0.013, 6, false);
+    const strMat   = new THREE.MeshStandardMaterial({
+      color: 0xC8C8A0, metalness: 0.8, roughness: 0.2,
+      emissive: 0x303010, emissiveIntensity: 0.2,
+    });
+    stringMesh = new THREE.Mesh(strGeo, strMat);
+    stringMesh.castShadow = true;
+    stringMesh.userData.partId = 'narambu';
+
+    const strGroup = new THREE.Group();
+    strGroup.add(stringMesh);
+    partGroups['narambu'] = strGroup;
+    partMats['narambu']   = [strMat];
+    scene.add(strGroup);
+    allMeshes.push(stringMesh);
+
+    // ── STRING BINDING (where string meets bow tips) ──
+    const bindMat = new THREE.MeshStandardMaterial({ color: 0x804020, roughness: 0.9 });
+    const bindGeo = new THREE.TorusGeometry(0.055, 0.015, 6, 12);
+    [bowPts[0], bowPts[bowPts.length-1]].forEach(pos => {
+      const bind = new THREE.Mesh(bindGeo, bindMat);
+      bind.position.copy(pos);
+      bind.userData.partId = 'narambu';
+      strGroup.add(bind);
+      allMeshes.push(bind);
+    });
+
+    // ── CLAY POT (KUDAM) ──
+    const potProfile = [
+      new THREE.Vector2(0.02,  0.00),
+      new THREE.Vector2(0.28,  0.06),
+      new THREE.Vector2(0.46,  0.28),
+      new THREE.Vector2(0.56,  0.55),
+      new THREE.Vector2(0.54,  0.82),
+      new THREE.Vector2(0.42,  1.02),
+      new THREE.Vector2(0.30,  1.18),
+      new THREE.Vector2(0.22,  1.28),
+      new THREE.Vector2(0.24,  1.36),
+      new THREE.Vector2(0.32,  1.42),
+      new THREE.Vector2(0.36,  1.44),
+      new THREE.Vector2(0.30,  1.46),
+    ];
+    const potGeo  = new THREE.LatheGeometry(potProfile, 28);
+    const potMat  = new THREE.MeshStandardMaterial({
+      color: 0xBC4A1A, roughness: 0.92, metalness: 0.01,
+      emissive: 0x200800, emissiveIntensity: 0.15,
+    });
+    const potMesh = new THREE.Mesh(potGeo, potMat);
+    potMesh.scale.setScalar(0.88);
+    potMesh.position.set(0.06, -4.15, 0);
+    potMesh.castShadow = true; potMesh.receiveShadow = true;
+    potMesh.userData.partId = 'kudam';
+
+    // Pot markings / tribal pattern (thin rings)
+    const ringMat = new THREE.MeshStandardMaterial({ color: 0x7A2808, roughness: 1 });
+    [0.35, 0.55, 0.7].forEach(ht => {
+      const rx = potProfile.find(p => Math.abs(p.y - ht * 1.46) < 0.15);
+      if (!rx) return;
+      const rg = new THREE.TorusGeometry(rx.x * 0.88, 0.008, 4, 28);
+      const rm = new THREE.Mesh(rg, ringMat);
+      rm.position.set(0.06, -4.15 + ht * 1.28, 0);
+      rm.userData.partId = 'kudam';
+      scene.add(rm);
+      allMeshes.push(rm);
+    });
+
+    const potGroup = new THREE.Group();
+    potGroup.add(potMesh);
+    partGroups['kudam'] = potGroup;
+    partMats['kudam']   = [potMat];
+    scene.add(potGroup);
+    allMeshes.push(potMesh);
+
+    // Coconut fiber cushion under pot
+    const cushGeo = new THREE.CylinderGeometry(0.48, 0.45, 0.08, 20);
+    const cushMat = new THREE.MeshStandardMaterial({ color: 0x4A3010, roughness: 1 });
+    const cush = new THREE.Mesh(cushGeo, cushMat);
+    cush.position.set(0.06, -4.24, 0);
+    cush.userData.partId = 'kudam';
+    scene.add(cush); allMeshes.push(cush);
+
+    // ── BELLS (GHUNGROO/MANI) ──
+    const bellMat = new THREE.MeshStandardMaterial({
+      color: 0xD4A020, metalness: 0.88, roughness: 0.15,
+      emissive: 0x302000, emissiveIntensity: 0.2,
+    });
+    const ghunGroup = new THREE.Group();
+    partGroups['ghungroo'] = ghunGroup;
+    partMats['ghungroo']   = [bellMat];
+    scene.add(ghunGroup);
+
+    // Bells hang along the bow at intervals
+    const bellT = [0.18, 0.28, 0.38, 0.48, 0.58, 0.68, 0.78, 0.88];
+    bellT.forEach((t, idx) => {
+      const bowPos = bowCurve.getPoint(t);
+      // Pendant cord
+      const cordGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.18, 4);
+      const cordMat = new THREE.MeshStandardMaterial({ color: 0x803010, roughness:1 });
+      const cord = new THREE.Mesh(cordGeo, cordMat);
+      cord.position.set(bowPos.x + 0.08, bowPos.y - 0.09, bowPos.z + 0.05);
+      cord.userData.partId = 'ghungroo';
+
+      // Bell sphere
+      const bGeo = new THREE.SphereGeometry(0.055, 10, 10);
+      const bell = new THREE.Mesh(bGeo, bellMat);
+      bell.position.set(bowPos.x + 0.08, bowPos.y - 0.18, bowPos.z + 0.05);
+      bell.userData.partId = 'ghungroo';
+
+      ghunGroup.add(cord, bell);
+      allMeshes.push(bell);
+    });
+
+    // ── STRIKING STICKS (VEESUKOL) ──
+    const stickMat = new THREE.MeshStandardMaterial({
+      color: 0xC8A060, roughness: 0.75, metalness: 0.05,
+      emissive: 0x100800, emissiveIntensity: 0.1,
+    });
+    const stickGeo = new THREE.CylinderGeometry(0.022, 0.018, 0.9, 8);
+
+    const stickGroup = new THREE.Group();
+    partGroups['veesukol'] = stickGroup;
+    partMats['veesukol']   = [stickMat];
+    scene.add(stickGroup);
+
+    // Two sticks near the string — one above the other
+    const stickPositions = [
+      { pos:[-.7, 1.2, 0.55], rot:[0.4, 0, 0.6] },
+      { pos:[-.7, 0.4, 0.55], rot:[0.3, 0, 0.5] },
+    ];
+    stickPositions.forEach(sp => {
+      const stick = new THREE.Mesh(stickGeo, stickMat);
+      stick.position.set(...sp.pos);
+      stick.rotation.set(...sp.rot);
+      stick.castShadow = true;
+      stick.userData.partId = 'veesukol';
+      stickGroup.add(stick); allMeshes.push(stick);
+
+      // Tip of stick (slightly different color)
+      const tipGeo = new THREE.CylinderGeometry(0.025, 0.022, 0.06, 8);
+      const tipMat = new THREE.MeshStandardMaterial({ color: 0x603008, roughness: 0.8 });
+      const tipMesh = new THREE.Mesh(tipGeo, tipMat);
+      tipMesh.position.set(...sp.pos);
+      tipMesh.position.y -= 0.48;
+      tipMesh.rotation.set(...sp.rot);
+      tipMesh.userData.partId = 'veesukol';
+      stickGroup.add(tipMesh); allMeshes.push(tipMesh);
+    });
+
+    // ── FLOWER GARLANDS (MAALA) ──
+    const flowerColors = [0xFFAA00, 0xFF6080, 0xFFFFCC, 0xFF4500, 0xFFD700, 0xFF80C0];
+    const ribbonColors = [0xFF3320, 0xFFD700, 0x20A040, 0xFFFFFF];
+    const maalagGrp = new THREE.Group();
+    partGroups['maala'] = maalagGrp;
+    partMats['maala']   = [];
+    scene.add(maalagGrp);
+
+    const flowerT = [0.12, 0.25, 0.40, 0.55, 0.70, 0.83];
+    flowerT.forEach((t, fi) => {
+      const bPos = bowCurve.getPoint(t);
+
+      // Flower cluster
+      const baseColor = flowerColors[fi % flowerColors.length];
+      for (let p = 0; p < 6; p++) {
+        const petalGeo = new THREE.SphereGeometry(0.065, 7, 7);
+        const petalMat = new THREE.MeshStandardMaterial({
+          color: flowerColors[(fi + p) % flowerColors.length],
+          emissive: new THREE.Color(flowerColors[(fi+p)%flowerColors.length]).multiplyScalar(0.3),
+          emissiveIntensity: 0.4, roughness: 0.5,
+        });
+        const petal = new THREE.Mesh(petalGeo, petalMat);
+        const a = (p / 6) * Math.PI * 2;
+        petal.position.set(bPos.x + Math.cos(a)*0.11, bPos.y + Math.sin(a)*0.11, bPos.z + 0.14);
+        petal.userData.partId = 'maala';
+        maalagGrp.add(petal); allMeshes.push(petal);
+        partMats['maala'].push(petalMat);
+      }
+      // Center of flower
+      const centGeo = new THREE.SphereGeometry(0.055, 7, 7);
+      const centMat = new THREE.MeshStandardMaterial({ color: 0xFFDD00, emissive: 0x554400, emissiveIntensity:0.5, roughness:0.4 });
+      const cent = new THREE.Mesh(centGeo, centMat);
+      cent.position.set(bPos.x, bPos.y, bPos.z + 0.14);
+      cent.userData.partId = 'maala';
+      maalagGrp.add(cent); allMeshes.push(cent);
+
+      // Ribbon (hanging strip)
+      const ribGeo = new THREE.PlaneGeometry(0.065, 0.35);
+      const ribMat = new THREE.MeshStandardMaterial({
+        color: ribbonColors[fi % ribbonColors.length],
+        side: THREE.DoubleSide, transparent: true, opacity: 0.85, roughness: 0.7,
+      });
+      const rib = new THREE.Mesh(ribGeo, ribMat);
+      rib.position.set(bPos.x + 0.04, bPos.y - 0.22, bPos.z + 0.18);
+      rib.userData.partId = 'maala';
+      maalagGrp.add(rib); allMeshes.push(rib);
+      partMats['maala'].push(ribMat);
+    });
+
+    // ── GROUND / PEDESTAL ──
+    const pedGeo = new THREE.CylinderGeometry(0.7, 0.85, 0.12, 30);
+    const pedMat = new THREE.MeshStandardMaterial({ color: 0x1A0A08, roughness: 0.9 });
+    const ped = new THREE.Mesh(pedGeo, pedMat);
+    ped.position.set(0, -4.35, 0);
+    ped.receiveShadow = true;
+    scene.add(ped);
+
+    // Shadow ground plane
+    const groundGeo = new THREE.PlaneGeometry(20, 20);
+    const groundMat = new THREE.ShadowMaterial({ opacity: 0.35 });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -4.5;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // ── AMBIENT PARTICLES (sparks) ──
+    const partGeo  = new THREE.BufferGeometry();
+    const partCnt  = 120;
+    const positions = new Float32Array(partCnt * 3);
+    for (let i = 0; i < partCnt; i++) {
+      positions[i*3]   = (Math.random() - 0.5) * 5;
+      positions[i*3+1] = Math.random() * 8 - 4;
+      positions[i*3+2] = (Math.random() - 0.5) * 3;
+    }
+    partGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const partMat2 = new THREE.PointsMaterial({ color: 0xFFB040, size: 0.035, transparent:true, opacity:0.5 });
+    const particles = new THREE.Points(partGeo, partMat2);
+    scene.add(particles);
+
+    console.log('Model built successfully');
+  }
+
+  buildModel();
+
+  // ── BUILD LEFT PANEL ─────────────────────────────────────────────
+  const ppList = document.getElementById('pp-list');
+  PARTS.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'part-item';
+    item.id = `pi-${p.id}`;
+    item.style.borderLeftColor = p.catColor;
+    item.innerHTML = `
+      <div class="pi-icon">${p.symbol}</div>
+      <div class="pi-text">
+        <div class="pi-name">${p.name}</div>
+        <div class="pi-tamil">${p.tamil}</div>
+        <div class="pi-sub">${p.sub}</div>
+      </div>`;
+    item.addEventListener('click', () => selectPart(p.id));
+    ppList.appendChild(item);
+  });
+
+  // ── BUILD FLOATING LABELS ─────────────────────────────────────────
+  const overlay = document.getElementById('cv-overlay');
+  PARTS.forEach(p => {
+    const lbl = document.createElement('div');
+    lbl.className = 'fl-label vis';
+    lbl.id = `lbl-${p.id}`;
+    lbl.innerHTML = `
+      <div class="fl-dot" style="background:${p.catColor}"></div>
+      <div class="fl-text" style="color:${p.catColor};border-color:${p.catColor}40">${p.name} · ${p.tamil}</div>`;
+    overlay.appendChild(lbl);
+  });
+
+  // ── SELECT PART ──────────────────────────────────────────────────
+  const hlMat = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, emissive: 0xFFD070, emissiveIntensity: 0.8, roughness: 0.3 });
+
+  function selectPart(id) {
+    // Reset all part materials
+    PARTS.forEach(p => {
+      const grp = partGroups[p.id];
+      if (!grp) return;
+      const mats = partMats[p.id];
+      if (!mats) return;
+      grp.traverse(obj => {
+        if (!obj.isMesh) return;
+        if (obj.userData.partId === p.id) {
+          // restore
+          if (obj._origMat) { obj.material = obj._origMat; delete obj._origMat; }
+        }
+      });
+      document.getElementById(`pi-${p.id}`)?.classList.remove('sel');
+    });
+
+    selPart = id;
+    const part = PARTS.find(p => p.id === id);
+    if (!part) return;
+
+    // Highlight selected part
+    const grp = partGroups[id];
+    if (grp) {
+      grp.traverse(obj => {
+        if (obj.isMesh && obj.userData.partId === id) {
+          obj._origMat = obj.material;
+          obj.material = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(part.hlColor),
+            emissive: new THREE.Color(part.hlColor),
+            emissiveIntensity: 0.55,
+            roughness: 0.3, metalness: 0.1,
+          });
+        }
+      });
+    }
+
+    // Update left panel
+    document.getElementById(`pi-${id}`)?.classList.add('sel');
+    document.getElementById(`pi-${id}`)?.scrollIntoView({ block:'nearest', behavior:'smooth' });
+
+    // Update right panel
+    showPartInfo(part);
+  }
+
+  function showPartInfo(p) {
+    document.getElementById('ip-default').style.display = 'none';
+    const ip = document.getElementById('ip-content');
+    ip.classList.add('vis');
+
+    ip.innerHTML = `
+      <div class="ipc-head">
+        <div class="ipc-cat" style="color:${p.catColor};background:${p.catColor}18;border-color:${p.catColor}44">${p.symbol} ${p.cat}</div>
+        <div class="ipc-name">${p.name}</div>
+        <div class="ipc-tamil">${p.tamil}</div>
+        <div class="ipc-sub">${p.sub}</div>
+      </div>
+
+      <div class="ipc-grid">
+        ${p.grid.map(g=>`<div class="ig-cell"><div class="ig-lbl">${g.l}</div><div class="ig-val">${g.v}</div></div>`).join('')}
+      </div>
+
+      <div class="ipc-sec">
+        <div class="sec-lbl">🎵 Description</div>
+        <p class="sec-p">${p.desc}</p>
+      </div>
+
+      <div class="ipc-sec">
+        <div class="sec-lbl">🛠 Crafting &amp; Construction</div>
+        <p class="sec-p">${p.crafting}</p>
+      </div>
+
+      <div class="ipc-fact" style="border-color:${p.catColor}88">
+        <div class="fact-lbl">💡 DID YOU KNOW</div>
+        <p class="fact-p">${p.fact}</p>
+      </div>
+
+      <div class="ipc-sound">
+        <button class="snd-btn" id="snd-btn"
+          style="background:linear-gradient(135deg,${p.catColor}28,${p.catColor}18);border:1px solid ${p.catColor}44;color:${p.catColor}"
+          onclick="playPartSound()">
+          ▶ &nbsp; Play Characteristic Sound
+        </button>
+      </div>
+
+      <div class="ipc-nav">
+        <button class="inav-btn" onclick="navPart(-1)">◀ Previous Part</button>
+        <button class="inav-btn" onclick="navPart(1)">Next Part ▶</button>
+      </div>`;
+
+    document.getElementById('info-panel').scrollTop = 0;
+  }
+
+  function navPart(dir) {
+    const idx = PARTS.findIndex(p => p.id === selPart);
+    const next = PARTS[(idx + dir + PARTS.length) % PARTS.length];
+    selectPart(next.id);
+  }
+
+  // ── AUDIO — Real MP3 Recordings ─────────────────────────────────
+  function stopCurrentAudio() {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      currentAudio = null;
+    }
+  }
+
+  // Returns the audio element if playback was STARTED,
+  // or null if playback was STOPPED (toggle off).
+  function playMp3(partId) {
+    const file = PART_SOUNDS[partId];
+    if (!file) return null;
+
+    const audio = audioCache[file] || new Audio(file);
+    audioCache[file] = audio;
+
+    // Toggle: same file currently playing → stop it
+    if (currentAudio === audio && !audio.paused) {
+      audio.pause();
+      audio.currentTime = 0;
+      currentAudio = null;
+      return null; // signal: toggled OFF
+    }
+
+    // Different or paused audio → stop previous, start this
+    stopCurrentAudio();
+    audio.currentTime = 0;
+    currentAudio = audio;
+    audio.play().catch(err => console.warn('Audio play blocked:', err));
+    return audio; // signal: toggled ON
+  }
+
+  function playPartSound() {
+    if (!selPart) return;
+    const p   = PARTS.find(x => x.id === selPart);
+    const btn = document.getElementById('snd-btn');
+    if (!p) return;
+
+    const audio = playMp3(selPart);
+
+    if (!audio) {
+      // Toggled OFF — reset button
+      if (btn) {
+        btn.classList.remove('playing');
+        btn.innerHTML = '&#9654; &nbsp; Play Characteristic Sound';
+      }
+      return;
+    }
+
+    // Toggled ON — update button to Stop state
+    if (btn) {
+      btn.classList.add('playing');
+      btn.innerHTML = '&#9646;&#9646; &nbsp; Stop Sound';
+    }
+
+    const resetBtn = () => {
+      const b = document.getElementById('snd-btn');
+      if (b) {
+        b.classList.remove('playing');
+        b.innerHTML = '&#9654; &nbsp; Play Characteristic Sound';
+      }
+      if (currentAudio === audio) currentAudio = null;
+    };
+
+    audio.onended = resetBtn;
+    // Fallback guard in case onended doesn't fire
+    const guardMs = (audio.duration && isFinite(audio.duration))
+      ? (audio.duration + 0.8) * 1000
+      : 8000;
+    setTimeout(resetBtn, guardMs);
+  }
+
+  // ── PLUCK STRING ANIMATION ───────────────────────────────────────
+  function pluckString() {
+    const pluckBtn = document.getElementById('btn-pluck');
+    const file = PART_SOUNDS['narambu'];
+    const cached = audioCache[file];
+
+    // Toggle OFF if currently playing
+    if (cached && !cached.paused && currentAudio === cached) {
+      cached.pause();
+      cached.currentTime = 0;
+      currentAudio = null;
+      if (pluckBtn) {
+        pluckBtn.classList.remove('active');
+        pluckBtn.textContent = '\uD83C\uDFB5 Pluck String';
+      }
+      return;
+    }
+
+    // Toggle ON — vibrate, flash, play
+    vibrating = true; vibrateT = 0;
+    const flash = document.getElementById('pluck-flash');
+    flash.style.opacity = '1';
+    setTimeout(() => flash.style.opacity = '0', 160);
+
+    const audio = playMp3('narambu');
+    if (audio) {
+      if (pluckBtn) {
+        pluckBtn.classList.add('active');
+        pluckBtn.textContent = '\u23F9 Stop';
+      }
+      audio.onended = () => {
+        if (pluckBtn) {
+          pluckBtn.classList.remove('active');
+          pluckBtn.textContent = '\uD83C\uDFB5 Pluck String';
+        }
+      };
+    }
+  }
+
+  // ── RAYCASTER ────────────────────────────────────────────────────
+  const raycaster = new THREE.Raycaster();
+  const mouse     = new THREE.Vector2();
+  const cvTip     = document.getElementById('cv-tip');
+
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    mouse.x =  ((e.clientX - r.left) / r.width)  * 2 - 1;
+    mouse.y = -((e.clientY - r.top)  / r.height)  * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObjects(allMeshes, false);
+    if (hits.length > 0) {
+      const pid = hits[0].object.userData.partId;
+      if (pid) {
+        const p = PARTS.find(x => x.id === pid);
+        if (p) {
+          canvas.style.cursor = 'pointer';
+          cvTip.style.display = 'block';
+          cvTip.style.left = (e.clientX + 14) + 'px';
+          cvTip.style.top  = (e.clientY - 30) + 'px';
+          cvTip.textContent = `${p.symbol} ${p.name} · ${p.tamil}`;
+          cvTip.style.color = p.catColor;
+          return;
+        }
+      }
+    }
+    canvas.style.cursor = 'default';
+    cvTip.style.display = 'none';
+  });
+
+  canvas.addEventListener('click', e => {
+    const r = canvas.getBoundingClientRect();
+    mouse.x =  ((e.clientX - r.left) / r.width)  * 2 - 1;
+    mouse.y = -((e.clientY - r.top)  / r.height)  * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObjects(allMeshes, false);
+    if (hits.length > 0) {
+      const pid = hits[0].object.userData.partId;
+      if (pid) selectPart(pid);
+    }
+  });
+
+  canvas.addEventListener('mouseleave', () => { cvTip.style.display = 'none'; });
+
+  // ── CONTROLS ─────────────────────────────────────────────────────
+  function toggleRotate() {
+    autoRotate = !autoRotate;
+    document.getElementById('btn-rotate').classList.toggle('active', autoRotate);
+  }
+  function toggleLabels() {
+    labelsVis = !labelsVis;
+    document.querySelectorAll('.fl-label').forEach(el => {
+      el.classList.toggle('vis', labelsVis);
+    });
+    document.getElementById('btn-labels').classList.toggle('active', labelsVis);
+  }
+  function resetCamera() {
+    camera.position.set(4.5, 0.5, 7);
+    controls.target.set(0, -0.3, 0);
+    controls.update();
+  }
+
+  // ── RESIZE ───────────────────────────────────────────────────────
+  function onResize() {
+    const area = document.getElementById('cv-area');
+    camW = area.clientWidth; camH = area.clientHeight;
+    renderer.setSize(camW, camH);
+    camera.aspect = camW / camH;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', onResize);
+  onResize();
+
+  // ── ANIMATION LOOP ───────────────────────────────────────────────
+  let frame = 0;
+  const tmpV = new THREE.Vector3();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    frame++;
+
+    // Auto-rotate scene
+    if (autoRotate) {
+      scene.rotation.y += 0.0025;
+    }
+    controls.update();
+
+    // String vibration
+    if (vibrating && stringMesh) {
+      vibrateT += 0.12;
+      const amp = Math.exp(-vibrateT * 0.55) * Math.sin(vibrateT * 14) * 0.12;
+      stringMesh.position.x = amp;
+      if (vibrateT > 7) { vibrating = false; stringMesh.position.x = 0; }
+    }
+
+    // Particle animation
+    const pPos = scene.children.find(c => c.isPoints)?.geometry?.attributes?.position;
+    if (pPos) {
+      for (let i = 0; i < pPos.count; i++) {
+        pPos.setY(i, pPos.getY(i) + 0.004);
+        if (pPos.getY(i) > 4) pPos.setY(i, -4);
+      }
+      pPos.needsUpdate = true;
+    }
+
+    // Bell gentle sway
+    const gGrp = partGroups['ghungroo'];
+    if (gGrp) { gGrp.children.forEach((c, i) => { if (c.isMesh) c.position.x += Math.sin(frame * 0.03 + i) * 0.0005; }); }
+
+    // Flower gentle pulse
+    const mGrp = partGroups['maala'];
+    if (mGrp) { mGrp.children.forEach((c, i) => { if (c.isMesh && c.userData.partId==='maala') { const s = 1 + Math.sin(frame * 0.02 + i * 0.4) * 0.03; c.scale.setScalar(s); } }); }
+
+    // Update floating label positions
+    PARTS.forEach(p => {
+      const lbl = document.getElementById(`lbl-${p.id}`);
+      if (!lbl || !labelsVis) return;
+      const wPos = LABEL_POS[p.id];
+      if (!wPos) return;
+      // Apply scene rotation to label position
+      tmpV.copy(wPos).applyEuler(scene.rotation).project(camera);
+      const x = (tmpV.x  *  0.5 + 0.5) * camW;
+      const y = (-tmpV.y * 0.5 + 0.5) * camH;
+      if (tmpV.z < 1) {
+        lbl.style.left = x + 'px';
+        lbl.style.top  = y + 'px';
+        lbl.style.opacity = labelsVis ? '1' : '0';
+      }
+    });
+
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // ── KEYBOARD SHORTCUTS ───────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') navPart(1);
+    if (e.key === 'ArrowLeft')  navPart(-1);
+    if (e.key === ' ') { e.preventDefault(); pluckString(); }
+    if (e.key === 'r') toggleRotate();
+  });
+
+  // ── INIT — select Villu on load ──────────────────────────────────
+  setTimeout(() => selectPart('villu'), 200);
+
+  </script>
+</body>
+</html>

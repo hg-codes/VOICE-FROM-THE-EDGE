@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Villu Paatu Performance Lab — Voices from the Edge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,500&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #080E12;
+      --bg-mid:    #0F1A22;
+      --bg-card:   #121E28;
+      --bg-card2:  #162230;
+      --border:    #1D3040;
+      --border-lt: #244050;
+      --teal-dk:   #0E5252;
+      --teal-md:   #1B8080;
+      --teal-lt:   #3AADA0;
+      --copper:    #D4830A;
+      --copper-lt: #F0A832;
+      --sage:      #5A9080;
+      --brick:     #C0302A;
+      --gold:      #F0C060;
+      --text:      #D8E8E8;
+      --text-mid:  #8AACAC;
+      --text-mute: #507070;
+      --white:     #FFFFFF;
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; }
+
+    /* ── Scrollbar ───────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-mid); }
+    ::-webkit-scrollbar-thumb { background: var(--teal-dk); border-radius: 3px; }
+
+    /* ── Header ──────────────────────────────────────────────── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.7rem 1.5rem;
+      background: var(--bg-mid);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-brand { display: flex; align-items: center; gap: 0.75rem; }
+    .brand-icon { font-size: 1.6rem; color: var(--teal-lt); }
+    .brand-text h1 { font-family: 'Playfair Display', serif; font-size: 1.05rem; color: var(--white); letter-spacing: 0.01em; }
+    .brand-text p  { font-size: 0.7rem; color: var(--text-mute); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 1px; }
+    .header-tag span {
+      padding: 0.38rem 1.1rem; border-radius: 4px;
+      background: var(--teal-dk); border: 1px solid var(--teal-md);
+      color: var(--white); font-size: 0.82rem; font-weight: 600;
+      letter-spacing: 0.04em; font-family: 'Inter', sans-serif;
+    }
+    .live-badge {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+      color: var(--text-mute);
+    }
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--text-mute);
+      transition: background 0.3s;
+    }
+    .live-dot.active { background: var(--brick); animation: pulse-dot 1.2s ease infinite; }
+    @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+
+    /* ── Main Layout ──────────────────────────────────────────── */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      grid-template-rows: 1fr auto;
+      height: calc(100vh - 56px);
+      gap: 0;
+    }
+
+    /* ── Video Column ─────────────────────────────────────────── */
+    .video-column {
+      display: flex; flex-direction: column;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .video-wrapper {
+      position: relative; flex: 1;
+      background: #000;
+    }
+    #yt-player { width: 100%; height: 100%; }
+    .video-wrapper iframe { width: 100%; height: 100%; display: block; }
+
+    /* overlay alert */
+    .video-alert {
+      position: absolute; top: 1rem; left: 50%; transform: translateX(-50%) translateY(-80px);
+      background: var(--copper); color: #000; font-size: 0.85rem; font-weight: 700;
+      padding: 0.45rem 1.4rem; border-radius: 100px;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      transition: transform 0.4s cubic-bezier(.34,1.56,.64,1), opacity 0.4s;
+      opacity: 0; pointer-events: none; z-index: 50;
+    }
+    .video-alert.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* ── Tala Visualizer Strip ────────────────────────────────── */
+    .tala-strip {
+      padding: 0.7rem 1.2rem;
+      background: var(--bg-mid);
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .tala-label {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-mute); white-space: nowrap;
+    }
+    .tala-label span { color: var(--teal-lt); font-weight: 600; }
+    .tala-dots { display: flex; gap: 6px; align-items: center; }
+    .tala-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--border-lt);
+      transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+    }
+    .tala-dot.beat {
+      background: var(--teal-lt);
+      box-shadow: 0 0 10px var(--teal-md);
+      transform: scale(1.3);
+    }
+    .tala-dot.accent {
+      background: var(--copper);
+      box-shadow: 0 0 12px var(--copper);
+      transform: scale(1.5);
+    }
+    .instrument-badge {
+      margin-left: auto; display: flex; align-items: center; gap: 0.5rem;
+    }
+    .instr-tag {
+      font-size: 0.72rem; padding: 0.22rem 0.65rem;
+      border-radius: 3px; font-weight: 600; letter-spacing: 0.04em;
+      background: var(--bg-card2); border: 1px solid var(--border-lt);
+      color: var(--text-mid); transition: all 0.3s;
+    }
+    .instr-tag.active { background: var(--teal-dk); border-color: var(--teal-md); color: var(--white); }
+
+    /* ── Right Panel ──────────────────────────────────────────── */
+    .right-panel {
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      background: var(--bg-mid);
+    }
+
+    /* Active concept card */
+    .concept-card {
+      padding: 1.2rem 1.2rem 1rem;
+      border-bottom: 1px solid var(--border);
+      position: relative; overflow: hidden;
+      transition: background 0.4s;
+      min-height: 190px;
+    }
+    .concept-card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+      background: var(--teal-lt); transition: background 0.4s;
+    }
+    .concept-card.kalpita::before  { background: var(--teal-lt); }
+    .concept-card.manodharma::before { background: var(--copper); }
+    .concept-card.narrative::before  { background: var(--sage); }
+    .concept-card.alert-flash { animation: card-flash 0.6s ease; }
+    @keyframes card-flash {
+      0% { background: rgba(212,131,10,0.0); }
+      30% { background: rgba(212,131,10,0.18); }
+      100% { background: transparent; }
+    }
+
+    .concept-type-tag {
+      display: inline-block; padding: 0.18rem 0.65rem; border-radius: 3px;
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      margin-bottom: 0.55rem; transition: background 0.3s, color 0.3s;
+    }
+    .tag-kalpita   { background: rgba(30,128,128,0.15); color: var(--teal-lt); border: 1px solid var(--teal-dk); }
+    .tag-manodharma{ background: rgba(212,131,10,0.15); color: var(--copper-lt); border: 1px solid #6A3A05; }
+    .tag-narrative { background: rgba(90,144,128,0.15); color: var(--sage); border: 1px solid #2A5040; }
+
+    .concept-title {
+      font-family: 'Playfair Display', serif; font-size: 1.22rem;
+      color: var(--white); line-height: 1.3; margin-bottom: 0.5rem;
+      transition: color 0.3s;
+    }
+    .concept-desc {
+      font-size: 0.82rem; color: var(--text-mid); line-height: 1.65;
+      margin-bottom: 0.7rem;
+    }
+    .alert-pill {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.22rem 0.75rem; border-radius: 100px;
+      background: rgba(212,131,10,0.15); border: 1px solid var(--copper);
+      color: var(--copper-lt); font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .alert-pill.visible { opacity: 1; animation: pill-pop 0.5s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes pill-pop { 0%{transform:scale(0.7)} 100%{transform:scale(1)} }
+    .alert-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--copper); animation: pulse-dot 1s ease infinite; }
+
+    /* Progress inside card */
+    .event-progress { margin-top: 0.75rem; }
+    .progress-track {
+      width: 100%; height: 3px; background: var(--border);
+      border-radius: 2px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; background: var(--teal-lt);
+      width: 0%; transition: width 0.5s linear;
+      border-radius: 2px;
+    }
+    .progress-fill.copper { background: var(--copper); }
+    .progress-meta { display: flex; justify-content: space-between; margin-top: 0.3rem; }
+    .progress-meta span { font-size: 0.68rem; color: var(--text-mute); font-family: 'JetBrains Mono', monospace; }
+
+    /* ── Timeline Scroller ────────────────────────────────────── */
+    .timeline-header {
+      padding: 0.65rem 1.2rem;
+      font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-mute); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .tl-count { color: var(--teal-lt); font-weight: 600; }
+    .timeline-list {
+      flex: 1; overflow-y: auto; padding: 0.5rem 0;
+    }
+    .tl-item {
+      display: flex; align-items: flex-start; gap: 0.75rem;
+      padding: 0.6rem 1.2rem;
+      cursor: pointer; border-left: 3px solid transparent;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .tl-item:hover { background: var(--bg-card); }
+    .tl-item.active {
+      background: var(--bg-card2);
+      border-left-color: var(--teal-lt);
+    }
+    .tl-item.active .tl-title { color: var(--white); }
+    .tl-time {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+      color: var(--text-mute); white-space: nowrap; padding-top: 1px; min-width: 40px;
+    }
+    .tl-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--border-lt); flex-shrink: 0; margin-top: 5px;
+      transition: background 0.2s;
+    }
+    .tl-item.active .tl-dot { background: var(--teal-lt); box-shadow: 0 0 6px var(--teal-md); }
+    .tl-content { flex: 1; min-width: 0; }
+    .tl-title { font-size: 0.82rem; font-weight: 600; color: var(--text-mid); transition: color 0.2s; line-height: 1.3; }
+    .tl-sub   { font-size: 0.72rem; color: var(--text-mute); margin-top: 2px; }
+    .tl-type-badge {
+      font-size: 0.62rem; padding: 0.1rem 0.38rem; border-radius: 2px; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase; flex-shrink: 0; margin-top: 3px;
+    }
+
+
+    /* ── Seek-to Timestamp ────────────────────────────────────── */
+    .seek-btn {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      margin-top: 0.5rem; padding: 0.22rem 0.7rem; border-radius: 4px;
+      background: transparent; border: 1px solid var(--border-lt);
+      color: var(--text-mute); font-size: 0.72rem; cursor: pointer;
+      transition: all 0.2s; font-family: 'Inter', sans-serif;
+    }
+    .seek-btn:hover { border-color: var(--teal-lt); color: var(--teal-lt); }
+
+    /* ── Skeleton / Loading ───────────────────────────────────── */
+    .player-placeholder {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: #050A0E; gap: 1rem;
+    }
+    .ph-icon { font-size: 3rem; color: var(--teal-dk); }
+    .ph-text { font-size: 0.85rem; color: var(--text-mute); text-align: center; }
+    .ph-url  { font-size: 0.72rem; color: var(--text-mute); font-family: 'JetBrains Mono', monospace; margin-top: 0.3rem; }
+
+    /* ── Responsive ───────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      .right-panel { border-top: 1px solid var(--border); }
+      .video-column { border-right: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ HEADER ══════════════ -->
+<header>
+  <div class="header-brand">
+    <div class="brand-icon">𝄞</div>
+    <div class="brand-text">
+      <h1>Performance Lab</h1>
+      <p>Villu Paatu · Live Annotation</p>
+    </div>
+  </div>
+  <div class="header-tag">
+    <span>Villu Paatu</span>
+  </div>
+  <div class="live-badge">
+    <div class="live-dot" id="live-dot"></div>
+    <span id="live-label">PAUSED</span>
+  </div>
+</header>
+
+<!-- ══════════════ MAIN ══════════════ -->
+<div class="main" id="main-container">
+
+  <!-- Left: Video + Tala strip -->
+  <div class="video-column">
+    <div class="video-wrapper">
+      <div id="yt-player">
+        <div class="player-placeholder">
+          <div class="ph-icon">▶</div>
+          <div class="ph-text">Loading YouTube player…<br>Allow a moment for the API to initialize.</div>
+          <div class="ph-url" id="ph-url-display"></div>
+        </div>
+      </div>
+      <div class="video-alert" id="video-alert"></div>
+    </div>
+
+    <!-- Tala visualizer strip -->
+    <div class="tala-strip">
+      <div class="tala-label">Tala Pattern: <span id="tala-name">—</span></div>
+      <div class="tala-dots" id="tala-dots"></div>
+      <div class="instrument-badge">
+        <div class="instr-tag" id="instr-tag">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="right-panel" id="right-panel">
+
+    <!-- Active concept display -->
+    <div class="concept-card" id="concept-card">
+      <div class="concept-type-tag tag-narrative" id="concept-type-tag">Narrative</div>
+      <div class="concept-title" id="concept-title">Waiting for playback…</div>
+      <div class="concept-desc" id="concept-desc">Press play on the video to begin live annotation. The panel will update in real time as the performance unfolds.</div>
+      <div class="alert-pill" id="alert-pill"><span class="alert-dot"></span><span id="alert-text">—</span></div>
+      <div class="event-progress">
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="progress-meta">
+          <span id="prog-elapsed">0:00</span>
+          <span id="prog-duration">—</span>
+        </div>
+      </div>
+      <button class="seek-btn" id="seek-start-btn" onclick="seekToEvent()" style="display:none">⏮ Jump to start of segment</button>
+    </div>
+
+    <!-- Timeline list -->
+    <div class="timeline-header">
+      <span>Performance Timeline</span>
+      <span class="tl-count" id="tl-count">— events</span>
+    </div>
+    <div class="timeline-list" id="timeline-list"></div>
+  </div>
+</div>
+
+<!-- ══════════════ DATA ══════════════ -->
+<script>
+// ── Timeline Data ──────────────────────────────────────────────────────────
+const villuData = {
+    title: "Villu Paatu Live: Rajavallipuram Manikandan Group",
+    videoId: "FqpO7u7EoP4",
+    talaDefault: "Chapu Talam (Mixed)",
+    events: [
+      {
+        start: 0, end: 8347,
+        type: "narrative", title: "Mythological Storytelling",
+        description: "The Pulavar (lead) spends this opening time building the epic narrative — using spoken word, humor, proverbs, and occasional musical bursts to hold the audience.",
+        activeInstrument: "Villu & Veesukol", tala: "Chapu Talam", talaBeats: [1,0,0,1,0,0,1,0], alert: null,
+      },
+      {
+        start: 8347, end: 8387,
+        type: "kalpita", title: "Kalpita (Fixed) — Pallavi",
+        description: "Listen: the Annavi (chorus) breaks into a fixed refrain — 'Alelangumi Alelo'. They are establishing the melodic anchor (Pallavi) and locking the Tala. This is Kalpita at work.",
+        activeInstrument: "Thalam & Annavi Chorus", tala: "Chapu Talam — Anchor", talaBeats: [1,1,1,1,1,1,1,1], alert: "Chorus Anchor Begins!",
+      },
+      {
+        start: 8387, end: 8426,
+        type: "manodharma", title: "Manodharma — Charanam (Verse)",
+        description: "The Pulavar takes over to sing expanding narrative verses ('Endha theruvila varalam...'). Notice how he bends the Laya (speed) freely while the chorus waits to respond.",
+        activeInstrument: "Lead Pulavar", tala: "Free Laya — Manodharma", talaBeats: [1,0,1,0,1,0,0,1], alert: null,
+      },
+      {
+        start: 8426, end: 8501,
+        type: "kalpita", title: "Return to Pallavi — Cyclical Loop",
+        description: "The chorus responds, looping seamlessly back to the central refrain. This cyclical anchor is the architectural heartbeat of Villu Paatu — Kalpita holding the performance together.",
+        activeInstrument: "Thalam & Annavi Chorus", tala: "Chapu Talam — Anchor", talaBeats: [1,1,1,1,1,1,1,1], alert: "Cyclical Loop",
+      },
+    ]
+};
+
+// ── State ──────────────────────────────────────────────────────────────────
+let player = null;
+let currentEventIdx = -1;
+let currentEventRef = null;
+let talaInterval = null;
+let talaBeat = 0;
+let pollInterval = null;
+let alertTimeout = null;
+
+// ── YouTube IFrame API ─────────────────────────────────────────────────────
+const tag = document.createElement('script');
+tag.src = 'https://www.youtube.com/iframe_api';
+document.head.appendChild(tag);
+
+window.onYouTubeIframeAPIReady = function () {
+  initPlayer();
+};
+
+function initPlayer() {
+  document.getElementById('ph-url-display').textContent = `youtu.be/${villuData.videoId}`;
+  player = new YT.Player('yt-player', {
+    videoId: villuData.videoId,
+    playerVars: { rel: 0, modestbranding: 1, showinfo: 0, enablejsapi: 1, origin: window.location.origin },
+    events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange }
+  });
+}
+
+function onPlayerReady() {
+  buildTimeline();
+  renderEvent(villuData.events[0], 0);
+}
+
+function onPlayerStateChange(e) {
+  const dot = document.getElementById('live-dot');
+  const label = document.getElementById('live-label');
+  if (e.data === YT.PlayerState.PLAYING) {
+    dot.classList.add('active'); label.textContent = 'LIVE';
+    startPolling();
+  } else {
+    dot.classList.remove('active'); label.textContent = 'PAUSED';
+    stopPolling();
+  }
+}
+
+// ── Polling ────────────────────────────────────────────────────────────────
+function startPolling() {
+  stopPolling();
+  pollInterval = setInterval(tick, 350);
+}
+function stopPolling() { clearInterval(pollInterval); }
+
+function tick() {
+  if (!player || typeof player.getCurrentTime !== 'function') return;
+  const t = player.getCurrentTime();
+  const events = villuData.events;
+  let found = -1;
+  for (let i = 0; i < events.length; i++) {
+    if (t >= events[i].start && t < events[i].end) { found = i; break; }
+  }
+  if (found === -1) found = events.length - 1;
+
+  if (found !== currentEventIdx) {
+    currentEventIdx = found;
+    renderEvent(events[found], found);
+    highlightTimeline(found);
+    if (events[found].alert) triggerAlert(events[found].alert);
+  }
+
+  // Update progress
+  if (currentEventRef) {
+    const ev = currentEventRef;
+    const elapsed = Math.max(0, t - ev.start);
+    const dur = ev.end - ev.start;
+    const pct = Math.min(100, (elapsed / dur) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('prog-elapsed').textContent = fmtTime(elapsed);
+    document.getElementById('prog-duration').textContent = fmtTime(dur);
+  }
+}
+
+// ── Event Rendering ────────────────────────────────────────────────────────
+function renderEvent(ev, idx) {
+  currentEventRef = ev;
+
+  const card = document.getElementById('concept-card');
+  card.className = 'concept-card ' + ev.type + ' alert-flash';
+  setTimeout(() => card.classList.remove('alert-flash'), 700);
+
+  const tag = document.getElementById('concept-type-tag');
+  const tagClass = { kalpita:'tag-kalpita', manodharma:'tag-manodharma', narrative:'tag-narrative' }[ev.type] || 'tag-narrative';
+  tag.className = 'concept-type-tag ' + tagClass;
+  tag.textContent = ev.type.charAt(0).toUpperCase() + ev.type.slice(1);
+
+  document.getElementById('concept-title').textContent = ev.title;
+  document.getElementById('concept-desc').textContent = ev.description;
+
+  // Progress bar colour
+  const pf = document.getElementById('progress-fill');
+  pf.className = 'progress-fill' + (ev.type === 'manodharma' ? ' copper' : '');
+  pf.style.width = '0%';
+  document.getElementById('prog-elapsed').textContent = '0:00';
+  document.getElementById('prog-duration').textContent = fmtTime(ev.end - ev.start);
+
+  // Alert pill
+  const pill = document.getElementById('alert-pill');
+  document.getElementById('alert-text').textContent = ev.alert || '';
+  pill.className = 'alert-pill' + (ev.alert ? ' visible' : '');
+
+  // Seek button
+  document.getElementById('seek-start-btn').style.display = 'inline-flex';
+  document.getElementById('seek-start-btn').dataset.start = ev.start;
+
+  // Instrument badge
+  const ib = document.getElementById('instr-tag');
+  ib.textContent = ev.activeInstrument || '—';
+  ib.className = 'instr-tag active';
+
+  // Tala visualizer
+  setupTala(ev.tala || villuData.talaDefault, ev.talaBeats || [1,0,1,0,1,0,1,0]);
+}
+
+// ── Alert ──────────────────────────────────────────────────────────────────
+function triggerAlert(text) {
+  const el = document.getElementById('video-alert');
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(alertTimeout);
+  alertTimeout = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ── Tala Visualizer ────────────────────────────────────────────────────────
+function setupTala(name, pattern) {
+  document.getElementById('tala-name').textContent = name;
+  const container = document.getElementById('tala-dots');
+  container.innerHTML = '';
+  pattern.forEach((b, i) => {
+    const d = document.createElement('div');
+    d.className = 'tala-dot';
+    if (b === 1) d.dataset.accent = 'true';
+    container.appendChild(d);
+  });
+  clearInterval(talaInterval);
+  talaBeat = 0;
+  const dots = Array.from(container.querySelectorAll('.tala-dot'));
+  talaInterval = setInterval(() => {
+    dots.forEach(d => d.className = 'tala-dot');
+    if (dots[talaBeat]) {
+      dots[talaBeat].className = 'tala-dot ' + (dots[talaBeat].dataset.accent ? 'accent' : 'beat');
+    }
+    talaBeat = (talaBeat + 1) % dots.length;
+  }, 420);
+}
+
+// ── Timeline Build ─────────────────────────────────────────────────────────
+function buildTimeline() {
+  const events = villuData.events;
+  const list = document.getElementById('timeline-list');
+  list.innerHTML = '';
+  document.getElementById('tl-count').textContent = events.length + ' events';
+
+  events.forEach((ev, i) => {
+    const item = document.createElement('div');
+    item.className = 'tl-item';
+    item.id = 'tl-' + i;
+    item.onclick = () => seekTo(ev.start);
+
+    const typeColors = { kalpita:'#1B8080', manodharma:'#D4830A', narrative:'#5A9080' };
+    const col = typeColors[ev.type] || '#5A9080';
+
+    item.innerHTML = `
+      <div class="tl-time">${fmtTimeFull(ev.start)}</div>
+      <div class="tl-dot"></div>
+      <div class="tl-content">
+        <div class="tl-title">${ev.title}</div>
+        <div class="tl-sub">${ev.activeInstrument}</div>
+      </div>
+      <div class="tl-type-badge" style="background:${col}22;color:${col};border:1px solid ${col}66">
+        ${ev.type.slice(0,4).toUpperCase()}
+      </div>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function highlightTimeline(idx) {
+  document.querySelectorAll('.tl-item').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+  const active = document.getElementById('tl-' + idx);
+  if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── Controls ───────────────────────────────────────────────────────────────
+function seekTo(t) {
+  if (player && player.seekTo) { player.seekTo(t, true); player.playVideo(); }
+}
+function seekToEvent() {
+  const btn = document.getElementById('seek-start-btn');
+  seekTo(parseFloat(btn.dataset.start || 0));
+}
+
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+function fmtTime(sec) {
+  const s = Math.floor(sec); const m = Math.floor(s/60); const ss = s%60;
+  return `${m}:${String(ss).padStart(2,'0')}`;
+}
+function fmtTimeFull(sec) {
+  const s = Math.floor(sec);
+  const h = Math.floor(s/3600); const m = Math.floor((s%3600)/60); const ss = s%60;
+  if (h>0) return `${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+  return `${m}:${String(ss).padStart(2,'0')}`;
+}
+
+// ── Init on load (fallback if API already ready) ───────────────────────────
+window.addEventListener('load', () => {
+  if (typeof YT !== 'undefined' && YT.Player) initPlayer();
+  setupTala('Chapu Talam', [1,0,0,1,0,0,1,0]);
+});
+</script>
+</body>
+</html>

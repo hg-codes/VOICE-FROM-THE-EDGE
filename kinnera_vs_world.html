@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kinnera & World Folk Strings | Interactive Cultural Map</title>
+  <meta name="description" content="Discover 14 folk string instruments from across the globe and their connection to the sacred Kinnera of Nallamala forest, India.">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Noto+Serif+Telugu:wght@400;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #020B18; color: #E8D5A0; font-family: 'Inter', sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+
+    /* ── Header ── */
+    #header {
+      height: 60px; flex-shrink: 0;
+      background: linear-gradient(to right, rgba(2,11,24,1), rgba(8,18,38,0.95), rgba(2,11,24,1));
+      border-bottom: 1px solid rgba(255,165,50,0.18);
+      display: flex; align-items: center; justify-content: space-between; padding: 0 24px;
+    }
+    .hdr-left h1 { font-family:'Cinzel',serif; font-size:1.25rem; color:#FFB347; letter-spacing:.1em; }
+    .hdr-left .sub { font-size:.65rem; color:rgba(255,180,80,0.5); letter-spacing:.14em; margin-top:2px; }
+    .hdr-stats { display:flex; gap:28px; }
+    .stat-box { text-align:center; }
+    .stat-box .n { font-family:'Cinzel',serif; font-size:1.5rem; font-weight:700; color:#FFB347; display:block; line-height:1; }
+    .stat-box .l { font-size:.6rem; color:rgba(200,160,80,0.55); letter-spacing:.1em; display:block; margin-top:2px; }
+
+    /* ── Filter bar ── */
+    #filter-bar {
+      height: 40px; flex-shrink: 0;
+      background: rgba(4,12,26,0.9);
+      border-bottom: 1px solid rgba(255,165,50,0.08);
+      display: flex; align-items: center; padding: 0 18px; gap: 10px; overflow-x: auto;
+    }
+    .fl { font-size:.65rem; color:rgba(200,160,80,0.5); letter-spacing:.12em; white-space:nowrap; margin-right:4px; }
+    .f-btn {
+      padding: 4px 13px; border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.03);
+      color: rgba(200,160,80,0.65); font-size:.68rem; cursor:pointer;
+      transition: all .18s; white-space:nowrap;
+      display:flex; align-items:center; gap:5px;
+    }
+    .f-btn:hover, .f-btn.on { color:#FFB347; background:rgba(255,150,50,.12); border-color:rgba(255,150,50,.38); }
+    .dot-i { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+
+    /* ── Main ── */
+    #main { flex:1; display:flex; overflow:hidden; }
+
+    /* ── Map ── */
+    #map-area { flex:1; position:relative; overflow:hidden; }
+    #mc { position:absolute; inset:0; cursor:crosshair; }
+    #tip {
+      position:absolute; pointer-events:none; display:none;
+      background:rgba(4,14,30,.93); border:1px solid rgba(255,165,50,.35);
+      border-radius:8px; padding:5px 12px;
+      font-size:.72rem; color:#FFB347; white-space:nowrap; z-index:50;
+    }
+    #map-hint {
+      position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
+      background:rgba(4,14,30,.8); border:1px solid rgba(255,165,50,.18);
+      border-radius:20px; padding:5px 16px;
+      font-size:.68rem; color:rgba(200,160,80,.65); pointer-events:none;
+      transition:opacity .5s;
+    }
+    #nav-links {
+      position:absolute; bottom:16px; right:16px;
+      display:flex; gap:8px;
+    }
+    .nav-a {
+      padding:5px 14px; background:rgba(4,14,30,.85);
+      border:1px solid rgba(255,165,50,.18); border-radius:20px;
+      color:rgba(255,180,80,.65); font-size:.68rem; text-decoration:none;
+      transition:all .2s;
+    }
+    .nav-a:hover { border-color:rgba(255,165,50,.5); color:#FFB347; }
+
+    /* ── Info Panel ── */
+    #panel {
+      width: 370px; flex-shrink:0;
+      background: linear-gradient(155deg,rgba(5,18,36,.98),rgba(3,10,22,.99));
+      border-left: 1px solid rgba(255,165,50,.12);
+      overflow-y: auto; display:flex; flex-direction:column;
+    }
+    #panel::-webkit-scrollbar { width:3px; }
+    #panel::-webkit-scrollbar-thumb { background:rgba(255,165,50,.3); border-radius:2px; }
+
+    /* Default state */
+    #p-default {
+      flex:1; display:flex; flex-direction:column; align-items:center;
+      justify-content:center; text-align:center; padding:36px 22px;
+      color:rgba(200,160,80,.4);
+    }
+    #p-default .ico { font-size:2.8rem; margin-bottom:14px; animation:bob 4s ease-in-out infinite; }
+    @keyframes bob { 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-7px); } }
+    #p-default h3 { font-family:'Cinzel',serif; font-size:.95rem; color:rgba(255,180,80,.45); margin-bottom:6px; }
+    #p-default p { font-size:.75rem; line-height:1.65; }
+    #legend-box { margin-top:22px; padding:14px; background:rgba(255,165,50,.04); border:1px solid rgba(255,165,50,.12); border-radius:10px; text-align:left; }
+    #legend-box .ltitle { font-size:.6rem; color:rgba(200,160,80,.45); letter-spacing:.12em; margin-bottom:8px; text-transform:uppercase; }
+    .lgnd-row { font-size:.72rem; color:rgba(200,160,80,.65); line-height:2.1; }
+
+    /* Content state */
+    #p-content { display:none; flex-direction:column; }
+    #p-content.vis { display:flex; }
+
+    .p-head { padding:18px 18px 14px; border-bottom:1px solid rgba(255,165,50,.09); }
+    .p-cat { display:inline-block; padding:2px 10px; border-radius:12px; font-size:.6rem; font-weight:600; letter-spacing:.12em; margin-bottom:7px; text-transform:uppercase; }
+    .p-iname { font-family:'Cinzel',serif; font-size:1.55rem; color:#FFD47A; letter-spacing:.04em; line-height:1.1; }
+    .p-native { font-size:1.05rem; color:rgba(255,200,100,.65); margin-top:4px; }
+    canvas#p-illo { width:100%; height:100px; display:block; margin-top:10px; }
+
+    .p-stats { display:flex; flex-wrap:wrap; gap:5px; padding:10px 18px; border-bottom:1px solid rgba(255,165,50,.07); }
+    .sbadge { padding:3px 10px; background:rgba(255,255,255,.04); border:1px solid rgba(255,165,50,.13); border-radius:12px; font-size:.64rem; color:rgba(220,180,100,.8); }
+    .sbadge b { color:#FFB347; }
+
+    .p-sim { padding:12px 18px; border-bottom:1px solid rgba(255,165,50,.07); }
+    .sim-lbl { font-size:.62rem; color:rgba(200,160,80,.52); letter-spacing:.1em; text-transform:uppercase; margin-bottom:5px; }
+    .sim-bg { height:7px; background:rgba(255,255,255,.06); border-radius:4px; overflow:hidden; }
+    .sim-fill { height:100%; border-radius:4px; transition:width .7s ease; }
+    .sim-score { font-size:.75rem; color:rgba(200,160,80,.65); margin-top:3px; }
+
+    .p-sec { padding:12px 18px; border-bottom:1px solid rgba(255,165,50,.07); }
+    .sec-t { font-size:.6rem; letter-spacing:.12em; text-transform:uppercase; color:rgba(200,160,80,.48); margin-bottom:5px; }
+    .sec-p { font-size:.78rem; line-height:1.62; color:rgba(220,190,140,.83); }
+
+    .p-conn { padding:12px 18px; border-bottom:1px solid rgba(255,165,50,.07); }
+    .conn-blk { border-left:3px solid; border-radius:0 8px 8px 0; padding:9px 13px; }
+    .conn-blk-lbl { font-size:.62rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; margin-bottom:3px; }
+    .conn-blk-txt { font-size:.76rem; line-height:1.55; color:rgba(220,190,140,.9); }
+
+    .p-fact { padding:10px 18px; border-bottom:1px solid rgba(255,165,50,.07); background:rgba(255,165,50,.03); }
+    .fact-lbl { font-size:.6rem; color:rgba(200,160,80,.45); letter-spacing:.1em; margin-bottom:3px; }
+    .fact-txt { font-size:.73rem; line-height:1.55; color:rgba(200,180,120,.75); font-style:italic; }
+
+    .p-play { padding:14px 18px; }
+    .play-btn {
+      width:100%; padding:10px; border:none; border-radius:8px;
+      cursor:pointer; font-size:.82rem; font-weight:600; letter-spacing:.05em;
+      transition:all .2s; display:flex; align-items:center; justify-content:center; gap:8px;
+    }
+    .play-btn:hover { transform:translateY(-1px); }
+    @keyframes bpulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.02);} }
+    .play-btn.pulsing { animation:bpulse .9s ease infinite; }
+
+    /* Prev / Next nav */
+    .p-nav { display:flex; justify-content:space-between; padding:8px 18px 14px; }
+    .p-nav-btn {
+      padding:5px 14px; background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,165,50,.15); border-radius:8px;
+      color:rgba(255,180,80,.6); font-size:.7rem; cursor:pointer; transition:all .2s;
+    }
+    .p-nav-btn:hover { border-color:rgba(255,165,50,.4); color:#FFB347; }
+  </style>
+</head>
+<body>
+<!-- INJECTED BACK NAVIGATION -->
+<div id="exhib-back-btn" style="position:fixed; top:20px; left:20px; z-index:999999;">
+<a href="index.html" style="background:rgba(15,10,25,0.75); border:1px solid rgba(232,161,0,0.3); color:#F5ECD7; text-decoration:none; padding:8px 16px; border-radius:100px; font-family:sans-serif; font-size:0.85rem; font-weight:500; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); display:flex; align-items:center; gap:8px; box-shadow:0 4px 20px rgba(0,0,0,0.5); transition:all 0.3s ease; text-transform:uppercase; letter-spacing:0.1em;" onmouseover="this.style.background='rgba(232,161,0,0.25)'; this.style.borderColor='#E8A100';" onmouseout="this.style.background='rgba(15,10,25,0.75)'; this.style.borderColor='rgba(232,161,0,0.3)';">
+   <span style="font-size:1.2em; margin-top:-2px;">&#10229;</span> Exhibition Hub
+</a>
+</div>
+
+
+  <!-- Header -->
+  <div id="header">
+    <div class="hdr-left">
+      <h1>🗺 Kinnera &amp; the World's Folk Strings</h1>
+      <div class="sub">PLUCKED ACROSS CULTURES — NALLAMALA TO THE WORLD</div>
+    </div>
+    <div class="hdr-stats">
+      <div class="stat-box"><span class="n">14</span><span class="l">Instruments</span></div>
+      <div class="stat-box"><span class="n">6</span><span class="l">Continents</span></div>
+      <div class="stat-box"><span class="n">4000+</span><span class="l">Years</span></div>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div id="filter-bar">
+    <span class="fl">SHOW:</span>
+    <button class="f-btn on" data-f="all">◉ All Instruments</button>
+    <button class="f-btn" data-f="origin"><span class="dot-i" style="background:#FF6B00"></span>Origin</button>
+    <button class="f-btn" data-f="related"><span class="dot-i" style="background:#FFB347"></span>Indian Kin</button>
+    <button class="f-btn" data-f="parallel"><span class="dot-i" style="background:#4A9CFF"></span>Global Parallels</button>
+    <button class="f-btn" data-f="ancestor"><span class="dot-i" style="background:#FF4A8A"></span>Ancient Ancestors</button>
+  </div>
+
+  <!-- Main -->
+  <div id="main">
+    <div id="map-area">
+      <canvas id="mc"></canvas>
+      <div id="tip"></div>
+      <div id="map-hint">🎵 Click any glowing dot to explore an instrument</div>
+      <div id="nav-links">
+        <a href="kinnera_3d_explorer.html" class="nav-a">◀ 3D Kinnera</a>
+        <a href="kinnera_spatial_story.html" class="nav-a">Village Story ▶</a>
+      </div>
+    </div>
+
+    <!-- Info panel -->
+    <div id="panel">
+      <div id="p-default">
+        <div class="ico">🌍</div>
+        <h3>Explore Connections</h3>
+        <p>Click any glowing dot on the map to discover how the Kinnera relates to folk string instruments from every corner of the world.</p>
+        <div id="legend-box">
+          <div class="ltitle">Legend</div>
+          <div class="lgnd-row">
+            <div><span style="color:#FF6B00">●</span> &nbsp;Kinnera — Origin</div>
+            <div><span style="color:#FFB347">●</span> &nbsp;Indian Regional Kin</div>
+            <div><span style="color:#4A9CFF">●</span> &nbsp;Global Parallels</div>
+            <div><span style="color:#FF4A8A">●</span> &nbsp;Ancient Ancestors</div>
+          </div>
+        </div>
+      </div>
+      <div id="p-content">
+        <div class="p-head">
+          <div id="pc-cat" class="p-cat"></div>
+          <div id="pc-name" class="p-iname"></div>
+          <div id="pc-native" class="p-native"></div>
+          <canvas id="p-illo" width="334" height="100"></canvas>
+        </div>
+        <div class="p-stats" id="pc-stats"></div>
+        <div class="p-sim">
+          <div class="sim-lbl">🔗 Connection Strength to Kinnera</div>
+          <div class="sim-bg"><div class="sim-fill" id="pc-sbar"></div></div>
+          <div class="sim-score" id="pc-sscore"></div>
+        </div>
+        <div class="p-sec">
+          <div class="sec-t">About This Instrument</div>
+          <p class="sec-p" id="pc-desc"></p>
+        </div>
+        <div class="p-conn">
+          <div class="sec-t">Kinnera Connection</div>
+          <div class="conn-blk" id="pc-conn"></div>
+        </div>
+        <div class="p-fact">
+          <div class="fact-lbl">💡 DID YOU KNOW</div>
+          <p class="fact-txt" id="pc-fact"></p>
+        </div>
+        <div class="p-play">
+          <button class="play-btn" id="pc-playbtn" onclick="playTone()">▶ &nbsp; Play Characteristic Tone</button>
+        </div>
+        <div class="p-nav">
+          <button class="p-nav-btn" onclick="navigateInst(-1)">◀ Previous</button>
+          <button class="p-nav-btn" onclick="navigateInst(1)">Next ▶</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  /* ================================================================
+     KINNERA VS THE WORLD | Interactive Folk String Instrument Map
+  ================================================================ */
+
+  const CAT = {
+    origin:   '#FF6B00',
+    related:  '#FFB347',
+    parallel: '#4A9CFF',
+    ancestor: '#FF4A8A',
+  };
+
+  const INSTR = [
+    {
+      id:'kinnera', name:'Kinnera', nat:'కిన్నెర',
+      lon:79.5, lat:17.5,
+      country:'India — Nallamala, Telangana', strings:'3',
+      type:'Plucked Gourd Lute', era:'Ancient (2000+ years)',
+      cat:'origin', sim:100, rel:'Origin Instrument',
+      desc:'The sacred instrument of the Koya and Chenchu tribal communities of Nallamala Forest, Telangana. A 3-stringed gourd resonator lute played during Kinnera Katha — sacred storytelling ballads performed at village festivals, night-long ritual gatherings, and royal courts of the Nallamala region.',
+      conn:'The heart of our journey. The Kinnera\'s gourd body, 3 strings, and narrative singing tradition is the connecting thread between all 14 instruments on this map.',
+      fact:'UNESCO is actively studying the Kinnera Katha tradition for Intangible Cultural Heritage recognition. Fewer than 200 master Kinnera players remain alive today.',
+      audio:{t:'pluck', f:[261,392,330], d:1.8}, icon:'gourd',
+    },
+    {
+      id:'ektara', name:'Ektara', nat:'একতারা',
+      lon:88, lat:23,
+      country:'West Bengal / Bangladesh', strings:'1',
+      type:'Plucked Drone Lute', era:'13th century (recorded)',
+      cat:'related', sim:82, rel:'Regional Cousin',
+      desc:'A single-string drone lute used by Baul mystic singer-musicians of Bengal. The name means "one string" (Ek = one, tara = string). Like the Kinnera, it is played while singing sacred folk ballads — the instrument hums a constant drone while the singer improvises narrative verses about love and spirituality.',
+      conn:'Same gourd construction · Same narrative folk singing function · Both rooted in tribal and mystic traditions of the Indian subcontinent.',
+      fact:'Baul singers are called "wandering minstrels of Bengal." They sing about finding God in the body and the soul — similar to the spiritual nature of Kinnera Katha ballads.',
+      audio:{t:'drone', f:[130], d:3.2}, icon:'gourd',
+    },
+    {
+      id:'dotara', name:'Dotara', nat:'দোতারা',
+      lon:91, lat:26,
+      country:'Bangladesh / Assam', strings:'2-5',
+      type:'Plucked Folk Lute', era:'Medieval',
+      cat:'related', sim:76, rel:'Bengali Folk Twin',
+      desc:'A 2-to-5-string folk lute central to Bihu festivals and storytelling songs of Bangladesh and Assam. The name means "two strings" in Persian (do = two, tara = string). Usually played alongside the Ektara by Baul and folk singers performing at village gatherings.',
+      conn:'Shared "tara" (string) vocabulary · Same folk singing tradition · Plucked lute from the same NE Indian cultural belt as the Kinnera\'s roots.',
+      fact:'The word "tara" meaning string in Persian appears in Dotara, Sitar, Tambura, and possibly Kinnera itself — showing how music vocabulary traveled the ancient Silk Road trade network.',
+      audio:{t:'pluck', f:[220,330], d:1.5}, icon:'bowl',
+    },
+    {
+      id:'sarangi', name:'Sarangi', nat:'सारंगी',
+      lon:74.5, lat:27,
+      country:'Rajasthan / Nepal', strings:'3 + 35 sympathetic',
+      type:'Bowed Lute', era:'Pre-17th century',
+      cat:'related', sim:60, rel:'Indian Folk Kin',
+      desc:'A bowed string instrument from Rajasthan and Nepal with 3 main gut strings and up to 35 thin sympathetic steel strings beneath. The name Sarangi literally means "of hundred colors." Played by Manganiyar and Langa folk musicians in narrative singing sessions that can last all night.',
+      conn:'Shared Indian folk tradition · Both played in close accompaniment to singing · Both represent the voice-like quality of stringed instruments in Indian folk music.',
+      fact:'The Sarangi has the most strings of any instrument on this map — up to 38 strings total — yet produces a sound so similar to the human voice that it is often used to replace vocal phrases.',
+      audio:{t:'bow', f:[196,294], d:2.5}, icon:'violin',
+    },
+    {
+      id:'sitar', name:'Sitar', nat:'सितार',
+      lon:77, lat:28.5,
+      country:'North India', strings:'18-21',
+      type:'Plucked Classical Lute', era:'13th century CE',
+      cat:'related', sim:55, rel:'Classical Indian Cousin',
+      desc:'India\'s globally celebrated long-necked lute with 18-21 strings including sympathetic resonators. Developed in the Mughal court. Its name derives from Persian "Setar" (three strings). Both Sitar and Kinnera share ancient Indian plucked string lineage, though Sitar evolved into a classical instrument while Kinnera remained close to its tribal roots.',
+      conn:'Shares ancient Indian plucked string lineage · Persian root "tar" (string) connects its name to the Kinnera string naming convention · Both evolved from early lutes that arrived via Silk Road.',
+      fact:'Ravi Shankar introduced the Sitar to global audiences through his 1960s collaborations with George Harrison of The Beatles. The resulting "raga rock" movement proved that tribal Indian folk instruments had universal appeal.',
+      audio:{t:'pluck', f:[294,370,440], d:2.2}, icon:'long',
+    },
+    {
+      id:'morin_khuur', name:'Morin Khuur', nat:'Морин хуур',
+      lon:106, lat:47,
+      country:'Mongolia', strings:'2',
+      type:'Bowed Chordophone', era:'13th century CE',
+      cat:'parallel', sim:68, rel:"Storyteller's Parallel",
+      desc:'The iconic "Horse-head Fiddle" of Mongolia — a 2-string bowed instrument carved with a horse\'s head on its scroll. UNESCO Intangible Cultural Heritage. Used by nomadic Mongolian storytellers to narrate epic poems called Tuuli for hours at community gatherings. The connection to Kinnera Katha is unmistakable across 5,000 miles.',
+      conn:'CLOSEST FUNCTIONAL MATCH: Both used in narrative epic storytelling at community night-gatherings · Both are sacred cultural symbols · Both represent the living memory of their people.',
+      fact:'Mongolian legend says the very first Morin Khuur was carved from the bones of a beloved horse. The instrument\'s two strings represent the mane and tail hair of the horse — every dimension carries sacred meaning.',
+      audio:{t:'bow', f:[147,220], d:3}, icon:'violin',
+    },
+    {
+      id:'pipa', name:'Pipa', nat:'琵琶',
+      lon:112, lat:33,
+      country:'China', strings:'4',
+      type:'Plucked Lute', era:'2nd century BCE',
+      cat:'ancestor', sim:45, rel:'Silk Road Ancestor',
+      desc:'One of the most ancient and influential lutes in East Asia. The pear-shaped Pipa entered China via the Silk Road from Persia during the Han Dynasty (206 BCE). Its design influenced instruments across Asia including those that eventually contributed to the Indian plucked string family from which the Kinnera descends.',
+      conn:'Ancient Ancestor: Silk Road lute tradition that spread plucked string instrument design across Asia to India, eventually contributing to the folk instrument family of which Kinnera is a member.',
+      fact:'Ancient Chinese paintings show Pipa players on camelback, playing the instrument while traveling the Silk Road — the very same trade route that carried music and instrument culture to India.',
+      audio:{t:'pluck', f:[330,440,523], d:1.6}, icon:'bowl',
+    },
+    {
+      id:'shamisen', name:'Shamisen', nat:'三味線',
+      lon:133, lat:34,
+      country:'Japan', strings:'3',
+      type:'Plucked Lute', era:'16th century CE',
+      cat:'parallel', sim:52, rel:'East Asian Parallel',
+      desc:'Japan\'s iconic 3-string banjo-lute, played with a large plectrum called a bachi. Descended from the Chinese Sanxian via Okinawa. Used in Kabuki theater, Bunraku puppet theater, and traditional narrative ballads — paralleling Kinnera\'s central role in the Katha performance and storytelling tradition.',
+      conn:'3 strings · Narrative ballad tradition · Central to theatrical storytelling performance — all key parallels with the Kinnera Katha tradition.',
+      fact:'In the Edo period, blind Shamisen players called biwa hōshi were government-licensed storytellers. They had exclusive legal rights to narrate certain war epics — similar to how Kinnera Katha singers were the only authorized narrators of the Sayanna story.',
+      audio:{t:'pluck', f:[294,440,370], d:1.4}, icon:'rect',
+    },
+    {
+      id:'biwa', name:'Biwa', nat:'琵琶',
+      lon:139, lat:37,
+      country:'Japan', strings:'4-5',
+      type:'Plucked Lute', era:'8th century CE',
+      cat:'parallel', sim:58, rel:'Epic Narrator Parallel',
+      desc:'Japan\'s ancient court lute, descended from the Chinese Pipa. The biwa hōshi — blind wandering lute players — traveled Japan for centuries narrating the Tale of the Heike war epic. This 150-year oral tradition of a wandering singer narrating an epic through string music mirrors the Kinnera Katha tradition almost exactly.',
+      conn:'STRONGEST NARRATIVE PARALLEL: Blind wandering lute singers narrating multi-generational epics = almost identical in function to the Kinnera Katha singer tradition in Nallamala.',
+      fact:'The complete Tale of the Heike was preserved purely through blind biwa singers for over 400 years before it was written down — the same way the Kinnera Katha ballads exist only in oral performance today.',
+      audio:{t:'pluck', f:[262,330,392,494], d:2}, icon:'bowl',
+    },
+    {
+      id:'oud', name:'Oud', nat:'عود',
+      lon:43, lat:24,
+      country:'Middle East / Egypt', strings:'11-13',
+      type:'Plucked Short-Neck Lute', era:'4000 BCE (earliest)',
+      cat:'ancestor', sim:40, rel:'Ancient Ancestor',
+      desc:'Possibly the oldest surviving lute in human history. The Oud\'s Arabic name (Al-Oud = "the wood") gave us the English word "lute." Spread across Asia and Europe via ancient trade routes. As the likely origin point of the entire lute family — including instruments that traveled to ancient India — the Oud may sit at the root of the Kinnera\'s entire family tree.',
+      conn:'Probable ancient ancestor: The Oud seeded the lute tradition across Eurasia via Silk Road and sea trade routes 4000+ years ago. That tradition reached India and diversified into instruments including the Kinnera.',
+      fact:'A Sumerian stone relief dating to 3000 BCE depicts a lute player whose instrument looks remarkably similar to the Oud. This makes the Oud tradition at least 5,000 years old — longer than most civilizations.',
+      audio:{t:'pluck', f:[196,247,294], d:2}, icon:'bowl',
+    },
+    {
+      id:'tar', name:'Tar', nat:'تار',
+      lon:47, lat:36,
+      country:'Iran / Azerbaijan / Armenia', strings:'25-28',
+      type:'Plucked Long-Neck Lute', era:'18th century (modern form)',
+      cat:'parallel', sim:44, rel:'Linguistic Cousin',
+      desc:'A figure-eight shaped long-necked lute from Iran and the Caucasus. The word "Tar" means "string" in Persian — a root embedded in many Indian instrument names: Sitar (seven-strings, from setar), Tambura, Dotara (two-tar), and possibly Kinnera itself. This shared vocabulary reveals the ancient musical dialogue between Persian and Indian civilizations.',
+      conn:'Linguistic Cousin: The Persian word "tar" (string) appears across Indian instrument names, suggesting a shared musical vocabulary built through millennia of Silk Road contact between ancient Persia and India.',
+      fact:'The word guitar traces back through the Arabic qitar → Portuguese guitarra → Greek kithara → possibly the same ancient root as the Persian "tar." The Kinnera\'s strings may carry this same 3,000-year linguistic lineage.',
+      audio:{t:'pluck', f:[196,262,330], d:1.8}, icon:'fig8',
+    },
+    {
+      id:'kora', name:'Kora', nat:'Kora',
+      lon:-12, lat:12,
+      country:'West Africa (Mandinka people, Gambia/Senegal)', strings:'21',
+      type:'Harp-Lute', era:'18th century (earliest records)',
+      cat:'parallel', sim:64, rel:'Griot Storyteller Parallel',
+      desc:'A 21-string harp-lute built from a large gourd resonator (calabash) and a long hardwood neck. Played by Jeli — hereditary singer-storytellers called Griots — who narrate history, royal genealogy, and moral tales at community gatherings for hours. The parallel to the Kinnera Katha tradition of gourd + strings + epic storytelling is remarkable and arose completely independently across 8,000 miles.',
+      conn:'STRONGEST CULTURAL PARALLEL: Jeli/Griot tradition (gourd instrument + oral epic storytelling + hereditary sacred singer role) mirrors the Kinnera Katha tradition almost exactly — despite zero historical contact between West Africa and Nallamala.',
+      fact:'Both the Kora player (Jeli) and the Kinnera Katha singer hold hereditary sacred positions, passed from parent to child for generations. Both are considered living repositories of community memory — the original "hard drives" of their civilization.',
+      audio:{t:'pluck', f:[261,330,392,523,440], d:2.2}, icon:'harp',
+    },
+    {
+      id:'akonting', name:'Akonting', nat:'Akonting',
+      lon:-16, lat:13,
+      country:'The Gambia (Jola people)', strings:'3',
+      type:'Plucked Spike Lute', era:'Pre-17th century',
+      cat:'parallel', sim:72, rel:'Gourd Construction Twin',
+      desc:'A 3-string gourd-body lute of the Jola people of Gambia, considered the likely direct ancestor of the American Banjo carried by enslaved Africans. The Akonting\'s construction — gourd resonator, long wooden neck, 3 strings — is strikingly similar in design principle to the Kinnera, despite arising on a completely different continent.',
+      conn:'Construction Twin: Same core design of gourd body + 3 strings + wooden neck arising independently in India (Kinnera) and West Africa (Akonting) — showing this instrument form is a universal human musical discovery.',
+      fact:'Akonting → Banjo is one of music history\'s most dramatic journeys. The same instrument design principle (gourd + 3 strings) exists in West Africa (Akonting), North America (Banjo) AND in India (Kinnera).',
+      audio:{t:'pluck', f:[220,330,294], d:1.4}, icon:'gourd',
+    },
+    {
+      id:'balalaika', name:'Balalaika', nat:'Балалайка',
+      lon:37, lat:56,
+      country:'Russia', strings:'3',
+      type:'Plucked Lute (Triangular body)', era:'17th century CE',
+      cat:'parallel', sim:38, rel:'Universal 3-String Parallel',
+      desc:'Russia\'s iconic triangular 3-string folk instrument, central to Russian folk songs, dances, and village storytelling traditions. Its unique triangular body has no clear explanation — it simply evolved this way. The Balalaika proves that the 3-string plucked folk lute for communal storytelling arose independently from Russia to India to West Africa.',
+      conn:'Universal Form: 3-string plucked folk lute for singing and storytelling appears independently in Russia (Balalaika), India (Kinnera), West Africa (Akonting), and Japan (Shamisen) — proving this is a universal human musical archetype.',
+      fact:"Nobody knows why the Balalaika is triangular. One theory: it evolved from a round-bodied instrument that slowly flattened during transport on horseback — similar to how the Kinnera's gourd shape varies between different tribal communities in Nallamala.",
+      audio:{t:'pluck', f:[294,440,523], d:1.3}, icon:'tri',
+    },
+  ];
+
+  // ── Simplified continent outlines as [lon, lat] ──
+  const LANDS = [
+    // North America
+    [[-168,71],[-142,60],[-128,50],[-124,47],[-114,32],[-106,26],[-90,18],[-84,10],[-79,9],
+     [-60,10],[-59,46],[-52,47],[-65,63],[-83,68],[-100,73],[-125,72],[-141,70],[-168,71]],
+    // South America
+    [[-72,12],[-78,8],[-77,2],[-52,0],[-36,-4],[-38,-18],[-70,-33],[-68,-54],[-64,-52],
+     [-64,-44],[-43,-22],[-35,-8],[-50,5],[-63,10],[-72,12]],
+    // Europe
+    [[-9,36],[2,44],[2,51],[8,55],[5,58],[25,71],[28,65],[25,59],[21,55],[13,54],
+     [15,50],[18,48],[20,44],[28,42],[26,38],[22,38],[26,36],[35,33],[36,36],[-9,36]],
+    // Africa
+    [[10,37],[37,30],[42,14],[50,12],[44,-12],[34,-25],[18,-35],[29,-30],[12,-18],
+     [-8,-4],[2,5],[-8,5],[-17,10],[-17,22],[-5,37],[10,37]],
+    // Asia (one large polygon)
+    [[30,70],[60,70],[80,72],[110,73],[140,47],[142,46],[140,36],[131,31],[112,22],
+     [104,10],[104,1],[115,-8],[106,1],[100,13],[91,22],[72,22],[68,30],[58,22],
+     [44,12],[42,14],[37,30],[40,37],[44,42],[58,45],[52,44],[55,37],[60,56],[40,65],[30,70]],
+    // Australia
+    [[114,-22],[126,-14],[136,-12],[141,-12],[148,-18],[153,-24],[148,-38],[140,-38],[137,-33],[114,-22]],
+    // Greenland
+    [[-47,84],[-55,72],[-47,61],[-52,63],[-52,70],[-64,77],[-52,83],[-47,84]],
+    // New Guinea
+    [[131,-1],[133,-2],[138,-4],[141,-8],[138,-6],[131,-1]],
+    // Japan
+    [[130,31],[131,33],[132,34],[135,35],[136,36],[137,37],[141,41],[141,43],[139,43],[136,36],[134,34],[131,33],[130,31]],
+    // UK
+    [[-5,50],[0,51],[2,56],[0,58],[-4,58],[-5,57],[-3,53],[-5,50]],
+    // Iceland
+    [[-24,64],[-13,63],[-13,66],[-16,66],[-22,66],[-24,65],[-24,64]],
+    // Madagascar
+    [[43,-12],[50,-15],[50,-18],[44,-25],[43,-19],[43,-12]],
+    // Sri Lanka
+    [[80,10],[81,7],[80,6],[79,8],[80,10]],
+    // Borneo
+    [[108, 4],[118, 7],[118, 1],[116,-3],[110,-4],[108,-3],[106, 1],[108, 4]],
+    // Sumatra
+    [[95, 5],[103, 0],[106,-5],[104,-4],[98, 2],[95, 5]],
+    // Philippines
+    [[118,10],[120,14],[124,18],[124,15],[122,12],[118,10]],
+    // New Zealand (North)
+    [[172,-34],[178,-37],[174,-39],[171,-38],[172,-34]],
+    // New Zealand (South)
+    [[166,-45],[171,-45],[174,-43],[174,-46],[170,-47],[166,-45]],
+  ];
+
+  // ── Canvas setup ──
+  const cv    = document.getElementById('mc');
+  const ctx   = cv.getContext('2d');
+  const tip   = document.getElementById('tip');
+  const iCanvas = document.getElementById('p-illo');
+  const iCtx  = iCanvas ? iCanvas.getContext('2d') : null;
+
+  let mapW, mapH;
+  let hoverId  = null;
+  let selId    = 'kinnera';
+  let filter   = 'all';
+  let dash     = 0;
+  let pulse    = 0;
+  let audioCtx = null;
+  let toneNodes = [];
+
+  // ── Equirectangular projection ──
+  const PAD = { x: 0.02, y: 0.04 };
+  function proj(lon, lat) {
+    const x = PAD.x * mapW + ((lon + 180) / 360) * mapW * (1 - PAD.x * 2);
+    const y = PAD.y * mapH + ((90 - lat) / 180) * mapH * (1 - PAD.y * 2);
+    return {x, y};
+  }
+
+  // ── Resize ──
+  function resize() {
+    const ma = document.getElementById('map-area');
+    cv.width  = mapW = ma.clientWidth;
+    cv.height = mapH = ma.clientHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ── Draw ──
+  function draw() {
+    ctx.clearRect(0, 0, mapW, mapH);
+
+    // Ocean
+    const og = ctx.createLinearGradient(0, 0, mapW, mapH);
+    og.addColorStop(0, '#020B16'); og.addColorStop(.5, '#030F20'); og.addColorStop(1, '#020B16');
+    ctx.fillStyle = og; ctx.fillRect(0, 0, mapW, mapH);
+
+    // Graticules
+    ctx.lineWidth = .5;
+    for (let lon = -180; lon <= 180; lon += 30) {
+      const p1 = proj(lon, 90), p2 = proj(lon, -90);
+      ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+      ctx.strokeStyle = 'rgba(30,70,100,.14)'; ctx.stroke();
+    }
+    const specLats = [66.5, 23.5, 0, -23.5, -66.5];
+    specLats.forEach(lat => {
+      const p1 = proj(-180, lat), p2 = proj(180, lat);
+      ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+      ctx.strokeStyle = lat === 0 ? 'rgba(50,110,140,.28)' : 'rgba(30,70,100,.18)';
+      ctx.lineWidth = lat === 0 ? 1 : .5; ctx.stroke();
+    });
+
+    // Nallamala origin glow
+    const kin = INSTR[0];
+    const kp = proj(kin.lon, kin.lat);
+    const rg = ctx.createRadialGradient(kp.x, kp.y, 0, kp.x, kp.y, mapW * .16);
+    rg.addColorStop(0, 'rgba(255,107,0,.1)'); rg.addColorStop(1, 'rgba(255,107,0,0)');
+    ctx.fillStyle = rg; ctx.fillRect(0, 0, mapW, mapH);
+
+    // Continents
+    LANDS.forEach(poly => {
+      ctx.beginPath();
+      let f = true;
+      poly.forEach(([lon, lat]) => {
+        const p = proj(lon, lat);
+        f ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+        f = false;
+      });
+      ctx.closePath();
+      const cg = ctx.createLinearGradient(0, 0, mapW, mapH);
+      cg.addColorStop(0, '#09190A'); cg.addColorStop(.5, '#0C1E0D'); cg.addColorStop(1, '#08160A');
+      ctx.fillStyle = cg; ctx.fill();
+      ctx.strokeStyle = 'rgba(28,75,22,.7)'; ctx.lineWidth = .8; ctx.stroke();
+    });
+
+    // Connection arcs FROM Kinnera
+    const visible = filter === 'all' ? INSTR : INSTR.filter(i => i.cat === filter);
+    visible.forEach(inst => {
+      if (inst.id === 'kinnera') return;
+      const ip = proj(inst.lon, inst.lat);
+      drawArc(kp.x, kp.y, ip.x, ip.y, CAT[inst.cat], dash,
+        inst.id === selId ? 0.65 : 0.22);
+    });
+
+    // Dots
+    visible.forEach(inst => {
+      const p = proj(inst.lon, inst.lat);
+      const col = CAT[inst.cat];
+      const sel = inst.id === selId;
+      const hov = inst.id === hoverId;
+      const ori = inst.cat === 'origin';
+      const R = ori ? 10 : 7;
+
+      // Pulse rings
+      if (sel || ori || hov) {
+        for (let r = 0; r < 2; r++) {
+          const ph = (pulse + r * .5) % 1;
+          const rr = R + ph * (ori ? 34 : 20);
+          const a  = (1 - ph) * (ori ? .55 : .4);
+          ctx.beginPath(); ctx.arc(p.x, p.y, rr, 0, Math.PI * 2);
+          ctx.strokeStyle = col + Math.round(a * 255).toString(16).padStart(2, '0');
+          ctx.lineWidth = ori ? 2 : 1.5; ctx.stroke();
+        }
+      }
+
+      // Outer glow
+      const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, R * 3);
+      glow.addColorStop(0, col + '77'); glow.addColorStop(1, col + '00');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(p.x, p.y, R * 3, 0, Math.PI * 2); ctx.fill();
+
+      // Dot
+      ctx.beginPath(); ctx.arc(p.x, p.y, R, 0, Math.PI * 2);
+      ctx.fillStyle = col; ctx.fill();
+
+      // White ring if selected
+      if (sel) {
+        ctx.beginPath(); ctx.arc(p.x, p.y, R + 4.5, 0, Math.PI * 2);
+        ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.stroke();
+      }
+
+      // Shine
+      ctx.beginPath(); ctx.arc(p.x - R * .28, p.y - R * .28, R * .42, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.fill();
+
+      // Label
+      if (sel || hov || ori) {
+        ctx.save();
+        ctx.font = ori ? `600 13px Inter,sans-serif` : `500 11px Inter,sans-serif`;
+        ctx.textAlign = 'center';
+        const lw = ctx.measureText(inst.name).width;
+        const lx = p.x, ly = p.y - R - 8;
+        ctx.fillStyle = 'rgba(4,14,30,.88)';
+        ctx.fillRect(lx - lw/2 - 5, ly - 13, lw + 10, 16);
+        ctx.fillStyle = ori ? '#FF6B00' : (sel ? '#FFD47A' : col);
+        ctx.fillText(inst.name, lx, ly);
+        ctx.restore();
+      }
+    });
+
+    // Vignette
+    const vig = ctx.createRadialGradient(mapW/2, mapH/2, mapH*.3, mapW/2, mapH/2, mapH*.85);
+    vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(2,11,24,.42)');
+    ctx.fillStyle = vig; ctx.fillRect(0, 0, mapW, mapH);
+  }
+
+  // ── Curved arc ──
+  function drawArc(x1, y1, x2, y2, col, dashOff, alpha) {
+    const dx = x2 - x1, dy = y2 - y1;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const mx = (x1+x2)/2, my = (y1+y2)/2;
+    const cpx = mx - dy * .2;
+    const cpy = my - dist * .22;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.quadraticCurveTo(cpx, cpy, x2, y2);
+    ctx.setLineDash([7, 5]);
+    ctx.lineDashOffset = -dashOff;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = alpha;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+  }
+
+  // ── Animation ──
+  function loop() {
+    dash  = (dash  + 0.28) % 12;
+    pulse = (pulse + 0.006) % 1;
+    draw();
+    requestAnimationFrame(loop);
+  }
+  loop();
+
+  // ── Hit testing ──
+  function hitTest(mx, my) {
+    const vis = filter === 'all' ? INSTR : INSTR.filter(i => i.cat === filter);
+    let best = null, bestD = 32;
+    vis.forEach(inst => {
+      const p = proj(inst.lon, inst.lat);
+      const d = Math.hypot(mx - p.x, my - p.y);
+      if (d < bestD) { best = inst; bestD = d; }
+    });
+    return best;
+  }
+
+  cv.addEventListener('mousemove', e => {
+    const r = cv.getBoundingClientRect();
+    const hit = hitTest(e.clientX - r.left, e.clientY - r.top);
+    hoverId = hit ? hit.id : null;
+    cv.style.cursor = hit ? 'pointer' : 'crosshair';
+    if (hit) {
+      tip.style.display = 'block';
+      tip.style.left = (e.clientX + 14) + 'px';
+      tip.style.top  = (e.clientY - 30) + 'px';
+      tip.textContent = hit.name + (hit.nat ? '  ' + hit.nat : '');
+    } else { tip.style.display = 'none'; }
+  });
+
+  cv.addEventListener('click', e => {
+    const r = cv.getBoundingClientRect();
+    const hit = hitTest(e.clientX - r.left, e.clientY - r.top);
+    if (hit) selectInst(hit.id);
+  });
+
+  cv.addEventListener('mouseleave', () => { hoverId = null; tip.style.display = 'none'; });
+
+  // ── Select & populate panel ──
+  function selectInst(id) {
+    selId = id;
+    const inst = INSTR.find(i => i.id === id);
+    if (!inst) return;
+
+    document.getElementById('p-default').style.display = 'none';
+    document.getElementById('p-content').classList.add('vis');
+
+    // Badge
+    const badge = document.getElementById('pc-cat');
+    const catLabel = { origin:'🎯 Origin Instrument', related:'🇮🇳 Indian Kin', parallel:'🌍 Global Parallel', ancestor:'⚡ Ancient Ancestor' };
+    badge.textContent = catLabel[inst.cat];
+    badge.style.background = CAT[inst.cat] + '22';
+    badge.style.border = `1px solid ${CAT[inst.cat]}50`;
+    badge.style.color = CAT[inst.cat];
+
+    document.getElementById('pc-name').textContent = inst.name;
+    document.getElementById('pc-native').textContent = inst.nat || '';
+
+    // Illustration
+    drawIcon(iCanvas, inst.icon, CAT[inst.cat]);
+
+    // Stats
+    document.getElementById('pc-stats').innerHTML =
+      `<div class="sbadge">📍 <b>${inst.country}</b></div>
+       <div class="sbadge">Strings: <b>${inst.strings}</b></div>
+       <div class="sbadge">Type: <b>${inst.type}</b></div>
+       <div class="sbadge">Era: <b>${inst.era}</b></div>`;
+
+    // Similarity
+    const pct = inst.sim;
+    const sc = pct >= 80 ? '#FF6B00' : pct >= 60 ? '#FFB347' : pct >= 45 ? '#4A9CFF' : '#FF4A8A';
+    const sb = document.getElementById('pc-sbar');
+    sb.style.width = pct + '%';
+    sb.style.background = `linear-gradient(90deg,${sc}77,${sc})`;
+    const ss = document.getElementById('pc-sscore');
+    ss.textContent = `${pct}% — ${inst.rel}`;
+    ss.style.color = sc;
+
+    // Text
+    document.getElementById('pc-desc').textContent = inst.desc;
+
+    // Connection
+    const cb = document.getElementById('pc-conn');
+    cb.innerHTML = `<div class="conn-blk-lbl" style="color:${CAT[inst.cat]}">${inst.rel}</div>
+                    <div class="conn-blk-txt">${inst.conn}</div>`;
+    cb.style.borderColor = CAT[inst.cat];
+
+    // Fact
+    document.getElementById('pc-fact').textContent = inst.fact;
+
+    // Play button
+    const pb = document.getElementById('pc-playbtn');
+    pb.style.background = `linear-gradient(135deg,${CAT[inst.cat]}28,${CAT[inst.cat]}18)`;
+    pb.style.border = `1px solid ${CAT[inst.cat]}44`;
+    pb.style.color = CAT[inst.cat];
+
+    document.getElementById('map-hint').style.opacity = '0';
+    document.getElementById('panel').scrollTop = 0;
+  }
+
+  // ── Instrument icon drawer ──
+  function drawIcon(canvas, type, color) {
+    if (!canvas) return;
+    const c = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    c.clearRect(0, 0, w, h);
+    const bg = c.createLinearGradient(0, 0, w, h);
+    bg.addColorStop(0, 'rgba(5,15,30,.93)'); bg.addColorStop(1, 'rgba(3,10,20,.97)');
+    c.fillStyle = bg; c.fillRect(0, 0, w, h);
+
+    c.strokeStyle = color; c.fillStyle = color + '2A'; c.lineWidth = 2;
+    const cx = w * .27, cy = h * .53;
+
+    if (type === 'gourd') {
+      // Gourd body
+      c.beginPath(); c.ellipse(cx, cy+10, 20, 26, 0, 0, Math.PI*2); c.fill(); c.stroke();
+      // Neck
+      c.fillRect(cx-5, cy-16, 10, 27); c.strokeRect(cx-5, cy-16, 10, 27);
+      // Long neck stick
+      c.beginPath(); c.moveTo(cx-4, cy-16); c.lineTo(cx-3, cy-62); c.lineTo(cx+3, cy-62); c.lineTo(cx+4, cy-16); c.fill(); c.stroke();
+      // Headstock
+      c.beginPath(); c.rect(cx-8, cy-74, 16, 13); c.fill(); c.stroke();
+      // Strings
+      c.strokeStyle = color+'CC'; c.lineWidth = 1;
+      for (let s=-1; s<=1; s++) { c.beginPath(); c.moveTo(cx+s*4, cy+33); c.lineTo(cx+s*3, cy-71); c.stroke(); }
+      // Sound hole
+      c.beginPath(); c.arc(cx, cy+15, 7, 0, Math.PI*2); c.strokeStyle = color+'88'; c.lineWidth=1.5; c.stroke();
+    }
+    else if (type === 'bowl') {
+      c.beginPath(); c.ellipse(cx+4, cy+8, 26, 32, .2, 0, Math.PI*2); c.fill(); c.stroke();
+      c.beginPath(); c.moveTo(cx-4,cy-26); c.quadraticCurveTo(cx,cy-50,cx+2,cy-66); c.lineTo(cx+7,cy-26); c.fill(); c.stroke();
+      c.strokeStyle = color+'BB'; c.lineWidth=1;
+      for (let s=-2; s<=2; s++) { c.beginPath(); c.moveTo(cx+4+s*4,cy+36); c.lineTo(cx+s*2,cy-64); c.stroke(); }
+      c.strokeStyle=color; c.lineWidth=2; c.fillStyle=color+'88';
+      for (let p=0;p<4;p++) { c.beginPath(); c.arc(cx-2+(p%2)*14,cy-66-Math.floor(p/2)*11,4,0,Math.PI*2); c.fill(); c.stroke(); }
+    }
+    else if (type === 'violin') {
+      c.beginPath();
+      c.moveTo(cx-14,cy-24); c.bezierCurveTo(cx-22,cy-16,cx-20,cy-4,cx-11,cy+2);
+      c.bezierCurveTo(cx-20,cy+8,cx-22,cy+18,cx-14,cy+27); c.lineTo(cx+14,cy+27);
+      c.bezierCurveTo(cx+22,cy+18,cx+20,cy+8,cx+11,cy+2);
+      c.bezierCurveTo(cx+20,cy-4,cx+22,cy-16,cx+14,cy-24); c.closePath();
+      c.fill(); c.stroke();
+      c.beginPath(); c.rect(cx-5,cy-50,10,27); c.fill(); c.stroke();
+      c.beginPath(); c.arc(cx,cy-54,9,0,Math.PI*2); c.fill(); c.stroke();
+      c.strokeStyle=color+'BB'; c.lineWidth=1;
+      for (let s=-1;s<=1;s++) { c.beginPath(); c.moveTo(cx+s*5,cy+27); c.lineTo(cx+s*2,cy-52); c.stroke(); }
+      c.strokeStyle=color+'88'; c.lineWidth=2.5;
+      c.beginPath(); c.moveTo(cx+27,cy-22); c.quadraticCurveTo(cx+38,cy,cx+27,cy+24); c.stroke();
+    }
+    else if (type === 'long') {
+      c.beginPath(); c.ellipse(cx, cy+38, 22, 17, 0, 0, Math.PI*2); c.fill(); c.stroke();
+      c.beginPath(); c.rect(cx-5,cy-30,10,70); c.fill(); c.stroke();
+      c.beginPath(); c.rect(cx-5,cy-72,10,43); c.fill(); c.stroke();
+      c.beginPath(); c.rect(cx-10,cy-76,20,6); c.fill(); c.stroke();
+      c.strokeStyle=color+'BB'; c.lineWidth=.8;
+      for (let s=-2;s<=2;s++) { c.beginPath(); c.moveTo(cx+s*3,cy+53); c.lineTo(cx+s*2,cy-74); c.stroke(); }
+      c.strokeStyle=color+'66'; c.lineWidth=1;
+      for (let f=0;f<6;f++) { const fy=cy-65+f*18; c.beginPath(); c.moveTo(cx-5,fy); c.lineTo(cx+5,fy); c.stroke(); }
+    }
+    else if (type === 'harp') {
+      c.beginPath(); c.ellipse(cx+5,cy+22,24,17,.3,0,Math.PI*2); c.fill(); c.stroke();
+      c.lineWidth=4; c.strokeStyle=color;
+      c.beginPath(); c.moveTo(cx,cy-65); c.lineTo(cx,cy+7); c.stroke();
+      c.lineWidth=2.5;
+      c.beginPath(); c.moveTo(cx,cy-65); c.quadraticCurveTo(cx+42,cy-56,cx+32,cy+7); c.stroke();
+      c.strokeStyle=color+'BB'; c.lineWidth=1;
+      for (let s=0;s<8;s++) { c.beginPath(); c.moveTo(cx+s*4.2,cy-62+s*3.5); c.lineTo(cx+32-s*4,cy+5); c.stroke(); }
+    }
+    else if (type === 'rect') {
+      c.beginPath(); c.rect(cx-19,cy-18,38,38); c.fill(); c.stroke();
+      c.beginPath(); c.rect(cx-4,cy-18-54,8,55); c.fill(); c.stroke();
+      c.strokeStyle=color+'BB'; c.lineWidth=1;
+      for (let s=-1;s<=1;s++) { c.beginPath(); c.moveTo(cx+s*4,cy+20); c.lineTo(cx+s*2,cy-72); c.stroke(); }
+      c.fillStyle=color+'35'; c.strokeStyle=color; c.lineWidth=2;
+      c.beginPath(); c.ellipse(cx+32,cy,13,18,.3,0,Math.PI*2); c.fill(); c.stroke();
+    }
+    else if (type === 'fig8') {
+      c.beginPath(); c.arc(cx,cy+16,17,0,Math.PI*2); c.fill(); c.stroke();
+      c.beginPath(); c.arc(cx,cy-4,11,0,Math.PI*2); c.fill(); c.stroke();
+      c.beginPath(); c.rect(cx-4,cy-15-48,8,50); c.fill(); c.stroke();
+      c.strokeStyle=color+'BB'; c.lineWidth=1;
+      for (let s=-1;s<=1;s++) { c.beginPath(); c.moveTo(cx+s*4,cy+30); c.lineTo(cx+s*2,cy-62); c.stroke(); }
+    }
+    else if (type === 'tri') {
+      c.beginPath(); c.moveTo(cx-24,cy+28); c.lineTo(cx+24,cy+28); c.lineTo(cx,cy-10); c.closePath(); c.fill(); c.stroke();
+      c.beginPath(); c.rect(cx-4,cy-10-52,8,53); c.fill(); c.stroke();
+      c.strokeStyle=color+'BB'; c.lineWidth=1;
+      for (let s=-1;s<=1;s++) { c.beginPath(); c.moveTo(cx+s*4,cy+28); c.lineTo(cx+s*2,cy-62); c.stroke(); }
+      c.beginPath(); c.arc(cx,cy+12,8,0,Math.PI*2); c.strokeStyle=color+'88'; c.lineWidth=1.5; c.stroke();
+    }
+    else {
+      c.beginPath(); c.arc(cx,cy+10,22,0,Math.PI*2); c.fill(); c.stroke();
+      c.beginPath(); c.rect(cx-5,cy-10-58,10,60); c.fill(); c.stroke();
+    }
+
+    // Right-side label area
+    const lx = w * .56;
+    c.fillStyle = color + 'AA';
+    c.font = '500 10px Inter,sans-serif'; c.textAlign = 'left';
+    c.fillText(type.replace(/_/g,' ').toUpperCase(), lx, 22);
+    c.fillStyle = 'rgba(200,160,80,.5)';
+    c.font = '10px Inter,sans-serif';
+    c.fillText('Instrument Family', lx, 36);
+    c.fillStyle = color + '88'; c.font = '11px Inter,sans-serif';
+    const inst = INSTR.find(i => CAT[i.cat] === color && i.id === selId);
+    if (inst) {
+      const lines = [`${inst.strings} Strings`, inst.type.split(' ')[0]];
+      lines.forEach((ln, i) => { c.fillText(ln, lx, 56 + i * 16); });
+    }
+  }
+
+  // ── Audio ──
+  function getAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  function playTone() {
+    const inst = INSTR.find(i => i.id === selId);
+    if (!inst) return;
+    const btn = document.getElementById('pc-playbtn');
+    const actx = getAudio();
+    const now  = actx.currentTime;
+    const a    = inst.audio;
+    toneNodes.forEach(n => { try { n.stop(); } catch(e){} });
+    toneNodes = [];
+    btn.classList.add('pulsing');
+    setTimeout(() => btn.classList.remove('pulsing'), 2100);
+
+    if (a.t === 'pluck') {
+      a.f.forEach((freq, i) => {
+        const osc = actx.createOscillator();
+        const gn  = actx.createGain();
+        const lp  = actx.createBiquadFilter();
+        osc.type = 'sawtooth'; osc.frequency.value = freq;
+        lp.type = 'lowpass'; lp.frequency.value = 1400; lp.Q.value = 1.5;
+        gn.gain.setValueAtTime(.3, now + i*.15);
+        gn.gain.exponentialRampToValueAtTime(.001, now + i*.15 + a.d);
+        osc.connect(lp); lp.connect(gn); gn.connect(actx.destination);
+        osc.start(now + i*.15); osc.stop(now + i*.15 + a.d + .1);
+        toneNodes.push(osc);
+      });
+    } else if (a.t === 'drone') {
+      const osc = actx.createOscillator();
+      const gn  = actx.createGain();
+      const bp  = actx.createBiquadFilter();
+      const lfo = actx.createOscillator();
+      const lg  = actx.createGain();
+      osc.type = 'sawtooth'; osc.frequency.value = a.f[0];
+      bp.type = 'bandpass'; bp.frequency.value = 650;
+      lfo.frequency.value = 5; lg.gain.value = 3.5;
+      lfo.connect(lg); lg.connect(osc.frequency);
+      gn.gain.setValueAtTime(.35, now);
+      gn.gain.setValueAtTime(.35, now + a.d - .3);
+      gn.gain.exponentialRampToValueAtTime(.001, now + a.d);
+      osc.connect(bp); bp.connect(gn); gn.connect(actx.destination);
+      osc.start(now); lfo.start(now); osc.stop(now + a.d); lfo.stop(now + a.d);
+      toneNodes = [osc, lfo];
+    } else if (a.t === 'bow') {
+      a.f.forEach((freq, i) => {
+        const osc = actx.createOscillator();
+        const gn  = actx.createGain();
+        const lp  = actx.createBiquadFilter();
+        const vib = actx.createOscillator();
+        const vg  = actx.createGain();
+        osc.type = 'sawtooth'; osc.frequency.value = freq;
+        lp.type = 'lowpass'; lp.frequency.value = 900;
+        vib.frequency.value = 5 + Math.random(); vg.gain.value = 3.5;
+        vib.connect(vg); vg.connect(osc.frequency);
+        gn.gain.setValueAtTime(0, now + i*.22);
+        gn.gain.linearRampToValueAtTime(.22, now + i*.22 + .3);
+        gn.gain.setValueAtTime(.22, now + i*.22 + a.d - .4);
+        gn.gain.exponentialRampToValueAtTime(.001, now + i*.22 + a.d);
+        osc.connect(lp); lp.connect(gn); gn.connect(actx.destination);
+        osc.start(now + i*.22); vib.start(now + i*.22);
+        osc.stop(now + i*.22 + a.d + .1); vib.stop(now + i*.22 + a.d + .1);
+        toneNodes.push(osc, vib);
+      });
+    }
+  }
+
+  // ── Navigate instruments ──
+  function navigateInst(dir) {
+    const vis = filter === 'all' ? INSTR : INSTR.filter(i => i.cat === filter);
+    const idx  = vis.findIndex(i => i.id === selId);
+    const next = vis[(idx + dir + vis.length) % vis.length];
+    if (next) selectInst(next.id);
+  }
+
+  // ── Filter buttons ──
+  document.querySelectorAll('[data-f]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-f]').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      filter = btn.dataset.f;
+    });
+  });
+
+  // ── Keyboard nav ──
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') navigateInst(1);
+    if (e.key === 'ArrowLeft')  navigateInst(-1);
+  });
+
+  // ── Init: select Kinnera ──
+  setTimeout(() => selectInst('kinnera'), 80);
+  </script>
+</body>
+</html>
